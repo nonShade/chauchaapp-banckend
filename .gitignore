@@ -1,0 +1,41 @@
+# ===== Reflex =====
+.web/
+.states/
+assets/external/
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+build/
+dist/
+wheels/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ===== Entorno virtual =====
+.venv/
+
+# ===== Nix =====
+# result es el output de nix build
+result
+result-*
+
+# ===== Variables de entorno =====
+.env
+
+# ===== Nix shell init marker =====
+.env_initialized
+
+# ===== Editores =====
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
