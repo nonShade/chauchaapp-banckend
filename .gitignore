@@ -35,6 +35,7 @@ result-*
 .idea/
 *.swp
 *.swo
+# .antigravity/
 
 # ===== OS =====
 .DS_Store

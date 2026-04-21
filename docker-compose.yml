@@ -1,0 +1,176 @@
+version: '3.8'
+
+# Define networks
+networks:
+  chauchaapp-network:
+    driver: bridge
+
+# Define volumes
+volumes:
+  postgres-data:
+    driver: local
+
+# Define services
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: chauchaapp-postgres
+    restart: unless-stopped
+    networks:
+      - chauchaapp-network
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-chauchaapp_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Application Service - Development Profile
+  app:
+    build:
+      context: .
+      target: development
+    container_name: chauchaapp-backend-dev
+    restart: unless-stopped
+    profiles:
+      - development
+    networks:
+      - chauchaapp-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Application settings
+      DEBUG: ${DEBUG:-true}
+      RELOAD: ${RELOAD:-true}
+      PORT: ${PORT:-8000}
+      HOST: ${HOST:-0.0.0.0}
+
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/chauchaapp_db
+
+      # External APIs
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production}
+      JWT_SECRET: ${JWT_SECRET:-dev_jwt_secret_change_in_production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
+
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .git/
+            - .venv/
+            - __pycache__/
+            - .pytest_cache/
+            - .coverage
+
+  # Application Service - QA Profile
+  app-qa:
+    build:
+      context: .
+      target: production
+    container_name: chauchaapp-backend-qa
+    restart: unless-stopped
+    profiles:
+      - qa
+    networks:
+      - chauchaapp-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Application settings
+      DEBUG: ${DEBUG:-false}
+      RELOAD: ${RELOAD:-false}
+      PORT: ${PORT:-8000}
+      HOST: ${HOST:-0.0.0.0}
+
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/chauchaapp_db_qa
+
+      # External APIs
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY:-qa_secret_key_change_in_production}
+      JWT_SECRET: ${JWT_SECRET:-qa_jwt_secret_change_in_production}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
+
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "8001:8000"
+
+  # Application Service - Production Profile
+  app-prod:
+    build:
+      context: .
+      target: production
+    container_name: chauchaapp-backend-prod
+    restart: unless-stopped
+    profiles:
+      - production
+    networks:
+      - chauchaapp-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Application settings
+      DEBUG: ${DEBUG:-false}
+      RELOAD: ${RELOAD:-false}
+      PORT: ${PORT:-8000}
+      HOST: ${HOST:-0.0.0.0}
+
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-password}@postgres:5432/chauchaapp_db_prod
+
+      # External APIs
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY}
+
+      # Security
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
+
+      # CORS
+      CORS_ORIGINS: ${CORS_ORIGINS}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-WARNING}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "8002:8000"
