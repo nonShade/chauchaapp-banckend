@@ -39,10 +39,10 @@ class RegisterRequestDTO(BaseModel):
     email: EmailStr
     password: str
     birth_date: date
-    income_type: str
+    income_type: UUID
     monthly_income: Decimal
     monthly_expenses: Decimal
-    topics: list[str]
+    topics: list[UUID]
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -76,7 +76,7 @@ class RegisterRequestDTO(BaseModel):
 
     @field_validator("topics")
     @classmethod
-    def validate_topics(cls, v: list[str]) -> list[str]:
+    def validate_topics(cls, v: list[UUID]) -> list[UUID]:
         if not v or len(v) == 0:
             raise ValueError("Debe seleccionar al menos un tópico")
         return v
@@ -94,6 +94,7 @@ class UserResponseDTO(BaseModel):
     email: str
     first_name: str
     last_name: str
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -112,14 +113,8 @@ class LoginResponseDTO(BaseModel):
 class RegisterResponseDTO(BaseModel):
     """Successful registration response."""
 
-    id: UUID
     message: str
-    first_name: str
-    last_name: str
-    email: str
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+    user: UserResponseDTO
 
 
 class LogoutResponseDTO(BaseModel):

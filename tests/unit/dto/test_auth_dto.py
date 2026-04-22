@@ -11,6 +11,7 @@ Test cases:
 
 from datetime import date
 from decimal import Decimal
+import uuid
 
 import pytest
 from pydantic import ValidationError
@@ -75,10 +76,10 @@ class TestRegisterRequestDTO:
             "email": "carlos@example.com",
             "password": "Passw0rd",
             "birth_date": date(1995, 5, 25),
-            "income_type": "salaried",
+            "income_type": uuid.uuid4(),
             "monthly_income": Decimal("950750"),
             "monthly_expenses": Decimal("450120"),
-            "topics": ["ahorro", "inversion"],
+            "topics": [uuid.uuid4(), uuid.uuid4()],
         }
 
     def test_valid_registration(self, valid_data):
@@ -155,7 +156,7 @@ class TestRegisterRequestDTO:
 
     def test_single_topic_accepted(self, valid_data):
         """One topic should be sufficient."""
-        valid_data["topics"] = ["ahorro"]
+        valid_data["topics"] = [uuid.uuid4()]
         dto = RegisterRequestDTO(**valid_data)
         assert len(dto.topics) == 1
 

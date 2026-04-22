@@ -47,33 +47,30 @@ class AuthRepository:
         self._session.flush()
         return user
 
-    def get_income_type_by_name(self, name: str) -> IncomeType | None:
-        """Find an income type by its name.
-
-        Args:
-            name: The income type name (e.g., 'salaried').
+    def get_income_type_by_id(self, income_type_id: uuid.UUID) -> IncomeType | None:
+        """Find an income type by its ID.
 
         Returns:
             The IncomeType entity or None if not found.
         """
         return (
             self._session.query(IncomeType)
-            .filter(IncomeType.name == name)
+            .filter(IncomeType.income_type_id == income_type_id)
             .first()
         )
 
-    def get_news_tags_by_names(self, names: list[str]) -> list[NewsTag]:
-        """Find news tags matching a list of names.
+    def get_news_tags_by_ids(self, tag_ids: list[uuid.UUID]) -> list[NewsTag]:
+        """Find news tags matching a list of IDs.
 
         Args:
-            names: List of tag names to search for.
+            tag_ids: List of tag UUIDs to search for.
 
         Returns:
             List of matching NewsTag entities.
         """
         return (
             self._session.query(NewsTag)
-            .filter(NewsTag.name.in_(names))
+            .filter(NewsTag.tag_id.in_(tag_ids))
             .all()
         )
 

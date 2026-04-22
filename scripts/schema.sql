@@ -464,10 +464,24 @@ $$;
 
 -- Income Types
 INSERT INTO income_type (name, description) VALUES
-    ('salaried', 'Trabajador dependiente con sueldo fijo'),
-    ('independent', 'Trabajador independiente o freelance'),
-    ('mixed', 'Combinación de ingresos dependientes e independientes'),
-    ('other', 'Otro tipo de ingreso')
+    ('Sueldo fijo', 'Trabajador dependiente con sueldo fijo'),
+    ('Independiente', 'Trabajador independiente o freelance'),
+    ('Mixto', 'Combinación de ingresos dependientes e independientes'),
+    ('Otro', 'Otro tipo de ingreso')
+ON CONFLICT (name) DO NOTHING;
+
+-- News Tags / Topics
+INSERT INTO news_tag (name, description) VALUES
+    ('Sueldo mínimo', 'Cambios en el salario mínimo'),
+    ('Combustible', 'Precios bencina/diesel'),
+    ('Alimentos', 'IPC y canasta básica'),
+    ('Vivienda', 'Arriendos, dividendos, UF'),
+    ('Transporte', 'Tarifas y movilidad'),
+    ('Servicios básicos', 'Luz, agua, internet'),
+    ('Impuestos', 'IVA, retenciones, SII'),
+    ('Créditos', 'Tasas y condiciones'),
+    ('Ahorro', 'APV, depósitos, fondos'),
+    ('Inversiones', 'Bolsa, fondos mutuos')
 ON CONFLICT (name) DO NOTHING;
 
 -- Transaction Types

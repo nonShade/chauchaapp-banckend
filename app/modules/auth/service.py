@@ -14,7 +14,7 @@ from app.modules.auth.dto import (
     LogoutResponseDTO,
     RegisterRequestDTO,
     RegisterResponseDTO,
-    UserResponseDTO,
+    UserResponseDTO
 )
 from app.modules.auth.exceptions import (
     EmailAlreadyExistsException,
@@ -70,6 +70,7 @@ class AuthService:
                 email=user.email,
                 first_name=user.first_name,
                 last_name=user.last_name,
+                created_at=user.created_at,
             ),
         )
 
@@ -94,7 +95,7 @@ class AuthService:
             raise EmailAlreadyExistsException()
 
         # Validate income type exists in database
-        income_type = self._repository.get_income_type_by_name(dto.income_type)
+        income_type = self._repository.get_income_type_by_id(dto.income_type)
         if not income_type:
             raise InvalidIncomeTypeException()
 
@@ -112,7 +113,7 @@ class AuthService:
         created_user = self._repository.create_user(user)
 
         # Create user interests (news tags)
-        tags = self._repository.get_news_tags_by_names(dto.topics)
+        tags = self._repository.get_news_tags_by_ids(dto.topics)
         if tags:
             tag_ids = [tag.tag_id for tag in tags]
             self._repository.create_user_interests(
@@ -120,12 +121,14 @@ class AuthService:
             )
 
         return RegisterResponseDTO(
-            id=created_user.user_id,
             message="Usuario creado correctamente",
-            first_name=created_user.first_name,
-            last_name=created_user.last_name,
-            email=created_user.email,
-            created_at=created_user.created_at,
+            user=UserResponseDTO(
+                id=created_user.user_id,
+                first_name=created_user.first_name,
+                last_name=created_user.last_name,
+                email=created_user.email,
+                created_at=created_user.created_at,
+            )
         )
 
     def logout(self, token: str) -> LogoutResponseDTO:

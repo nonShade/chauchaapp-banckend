@@ -63,10 +63,10 @@ def register_dto():
         email="carlos@example.com",
         password="Passw0rd",
         birth_date=date(1995, 5, 25),
-        income_type="salaried",
+        income_type=uuid.uuid4(),
         monthly_income=Decimal("950750"),
         monthly_expenses=Decimal("450120"),
-        topics=["ahorro", "inversion"],
+        topics=[uuid.uuid4(), uuid.uuid4()],
     )
 
 
@@ -145,7 +145,7 @@ class TestRegister:
     ):
         """CP-005: Successful registration returns user confirmation."""
         mock_repository.get_user_by_email.return_value = None
-        mock_repository.get_income_type_by_name.return_value = mock_income_type
+        mock_repository.get_income_type_by_id.return_value = mock_income_type
 
         created_user = MagicMock(spec=User)
         created_user.user_id = uuid.uuid4()
@@ -157,13 +157,13 @@ class TestRegister:
 
         tag = MagicMock(spec=NewsTag)
         tag.tag_id = uuid.uuid4()
-        mock_repository.get_news_tags_by_names.return_value = [tag]
+        mock_repository.get_news_tags_by_ids.return_value = [tag]
 
         result = service.register(register_dto)
 
         assert result.message == "Usuario creado correctamente"
-        assert result.email == "carlos@example.com"
-        assert result.first_name == "Carlos"
+        assert result.user.email == "carlos@example.com"
+        assert result.user.first_name == "Carlos"
         mock_repository.create_user.assert_called_once()
         mock_repository.create_user_interests.assert_called_once()
 
@@ -172,7 +172,7 @@ class TestRegister:
     ):
         """Password must be hashed before storing."""
         mock_repository.get_user_by_email.return_value = None
-        mock_repository.get_income_type_by_name.return_value = mock_income_type
+        mock_repository.get_income_type_by_id.return_value = mock_income_type
 
         created_user = MagicMock(spec=User)
         created_user.user_id = uuid.uuid4()
@@ -181,7 +181,7 @@ class TestRegister:
         created_user.email = "carlos@example.com"
         created_user.created_at = datetime.now()
         mock_repository.create_user.return_value = created_user
-        mock_repository.get_news_tags_by_names.return_value = []
+        mock_repository.get_news_tags_by_ids.return_value = []
 
         service.register(register_dto)
 
@@ -205,7 +205,7 @@ class TestRegister:
     ):
         """Invalid income type raises InvalidIncomeTypeException."""
         mock_repository.get_user_by_email.return_value = None
-        mock_repository.get_income_type_by_name.return_value = None
+        mock_repository.get_income_type_by_id.return_value = None
 
         with pytest.raises(InvalidIncomeTypeException):
             service.register(register_dto)
