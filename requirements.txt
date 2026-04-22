@@ -5,3 +5,7 @@ pytest-cov
 python-dotenv
 requests
 pydantic
+sqlalchemy>=2.0
+psycopg2-binary
+alembic
+bcrypt

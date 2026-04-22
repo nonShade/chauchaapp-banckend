@@ -8,6 +8,7 @@ Systematically develop a complete use case from specification to deployed featur
 - **PythonBackendDeveloper**: Implements production code for each layer
 - **QADeveloper**: Develops and executes test cases
 - **DevOpsDeveloper**: Configures deployment and environment if needed
+- **PostgreSQLDatabaseDeveloper**: Designs and implements database schema changes, migrations, and test data
 
 ## Workflow Overview
 
@@ -44,9 +45,15 @@ Systematically develop a complete use case from specification to deployed featur
 ### Phase 3: Layered Implementation (TDD)
 For each layer (Repository → Service → Controller), follow TDD workflow:
 
+#### Step 3.0: Database Schema Implementation
+1. **PostgreSQLDatabaseDeveloper** designs database schema based on architecture design.
+2. **PostgreSQLDatabaseDeveloper** creates SQL DDL scripts or Alembic migrations.
+3. **PostgreSQLDatabaseDeveloper** generates test data for QA environment if needed.
+4. **PostgreSQLDatabaseDeveloper** coordinates with PythonBackendDeveloper on ORM model definitions.
+
 #### Step 3.1: Repository Layer
 1. **QADeveloper** writes failing unit tests for repository methods.
-2. **PythonBackendDeveloper** implements repository to pass tests.
+2. **PythonBackendDeveloper** implements repository to pass tests (using database schema from Step 3.0).
 3. **QADeveloper** writes integration tests with real database.
 4. **PythonBackendDeveloper** fixes any integration issues.
 

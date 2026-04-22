@@ -10,17 +10,20 @@ This directory contains configuration for Antigravity agents, rules, skills, and
 │   ├── orchestrator.md
 │   ├── python_backend_developer.md
 │   ├── qa_developer.md
-│   └── devops_developer.md
+│   ├── devops_developer.md
+│   └── postgresql_database_developer.md
 ├── rules/                # Behavioral rules and constraints
 │   ├── project_boundaries.md
 │   ├── backend_development_rules.md
-│   └── tdd_rules.md
+│   ├── tdd_rules.md
+│   └── postgresql_development_rules.md
 ├── skills/               # Capabilities agents can use
 │   ├── python_backend_development.md
 │   ├── unit_testing.md
 │   ├── integration_testing.md
 │   ├── docker_skills.md
-│   └── specs_driven_development.md
+│   ├── specs_driven_development.md
+│   └── postgresql_database_management.md
 ├── workflows/            # Process definitions
 │   ├── tdd_workflow.md
 │   └── use_case_development_workflow.md
@@ -41,6 +44,9 @@ Specialized in testing: unit tests, integration tests, end-to-end tests, and qua
 ### DevOps Developer
 Specialized in containerization (Docker), CI/CD pipelines, deployment, and infrastructure.
 
+### PostgreSQL Database Developer
+Specialized in PostgreSQL database design, schema development, migrations, performance optimization, and test data generation. Provides database expertise to other agents.
+
 ## Rules
 
 ### Project Boundaries
@@ -51,6 +57,9 @@ Defines architectural patterns (layered architecture, DTOs, error handling) and 
 
 ### TDD Rules
 Enforces Test-Driven Development cycle (Red-Green-Refactor) and testing best practices.
+
+### PostgreSQL Development Rules
+Ensures consistent, secure, and performant PostgreSQL database development across all environments.
 
 ## Skills
 
@@ -68,6 +77,9 @@ Capability to create and maintain Docker containers and Docker Compose configura
 
 ### Specs Driven Development
 Capability to interpret natural language specifications and convert them into structured implementation plans.
+
+### PostgreSQL Database Management
+Capability to design, implement, and manage PostgreSQL databases, including schema design, SQL scripting, migrations, performance optimization, and test data generation.
 
 ## Workflows
 

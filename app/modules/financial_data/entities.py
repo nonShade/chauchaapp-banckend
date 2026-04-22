@@ -1,0 +1,68 @@
+"""
+Financial data module entities.
+
+Tables:
+    - bank: Financial institutions.
+    - credit_product: Credit products offered by banks.
+"""
+
+import uuid
+from decimal import Decimal
+
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.shared.base_entity import AuditMixin
+from app.shared.database import Base
+
+
+class Bank(Base, AuditMixin):
+    """Financial institution entity."""
+
+    __tablename__ = "bank"
+
+    bank_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    bank_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    code: Mapped[str | None] = mapped_column(String(45), nullable=True)
+
+    # Relationships
+    credit_products: Mapped[list["CreditProduct"]] = relationship(
+        back_populates="bank"
+    )
+
+
+class CreditProduct(Base, AuditMixin):
+    """Credit product offered by a bank (loans, credit lines, etc.)."""
+
+    __tablename__ = "credit_product"
+
+    credit_product_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    bank_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("bank.bank_id"),
+        nullable=False,
+    )
+    product_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    effective_rate: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 2), nullable=True
+    )
+    min_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    max_amount: Mapped[Decimal | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
+    min_term: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_term: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    min_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    max_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    cae: Mapped[str | None] = mapped_column(String(45), nullable=True)
+
+    # Relationships
+    bank: Mapped["Bank"] = relationship(back_populates="credit_products")

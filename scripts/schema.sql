@@ -1,0 +1,551 @@
+-- ============================================================
+-- ChauchaApp Database Schema
+-- Version: 1.0
+-- Description: Full DDL for all tables, triggers, and seed data
+-- ============================================================
+
+-- Extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- ============================================================
+-- TRIGGER FUNCTION: auto-update updated_at on row changes
+-- ============================================================
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ============================================================
+-- LOOKUP TABLES
+-- ============================================================
+
+-- Income Type (salaried, independent, mixed, other)
+CREATE TABLE IF NOT EXISTS income_type (
+    income_type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Transaction Type (income, expense)
+CREATE TABLE IF NOT EXISTS transaction_type (
+    transaction_type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Transaction Frequency (one_time, monthly, weekly)
+CREATE TABLE IF NOT EXISTS transaction_frequency (
+    transaction_frequency_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Transaction Category (alimentacion, transporte, sueldo, etc.)
+CREATE TABLE IF NOT EXISTS transaction_category (
+    transaction_category_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    transaction_type_id UUID REFERENCES transaction_type(transaction_type_id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Notification Type (group_join_request, transaction_reminder, etc.)
+CREATE TABLE IF NOT EXISTS notification_type (
+    notification_type_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Notification Status (pending, sent, read, dismissed)
+CREATE TABLE IF NOT EXISTS notification_status (
+    notification_status_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- Educational Topic (ahorro, inversion, presupuesto, etc.)
+CREATE TABLE IF NOT EXISTS educational_topic (
+    educational_topic_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+
+-- ============================================================
+-- USER MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS "user" (
+    user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    email VARCHAR(180) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    birth_date DATE NOT NULL,
+    income_type_id UUID REFERENCES income_type(income_type_id),
+    monthly_income DECIMAL(12, 2) NOT NULL,
+    monthly_expenses DECIMAL(12, 2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_email ON "user"(email);
+
+
+-- ============================================================
+-- GROUPS MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS family_group (
+    family_group_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    admin_id UUID NOT NULL REFERENCES "user"(user_id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS group_member (
+    group_member_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    family_group_id UUID NOT NULL REFERENCES family_group(family_group_id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID,
+    UNIQUE(user_id, family_group_id)
+);
+
+CREATE TABLE IF NOT EXISTS group_join_request (
+    group_join_request_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    family_group_id UUID NOT NULL REFERENCES family_group(family_group_id),
+    requester_user_id UUID NOT NULL REFERENCES "user"(user_id),
+    status VARCHAR(45) NOT NULL DEFAULT 'pending',
+    responded_by UUID REFERENCES "user"(user_id),
+    responded_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_group_join_request_status
+    ON group_join_request(status);
+
+
+-- ============================================================
+-- FINANCIAL DATA MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS bank (
+    bank_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bank_name VARCHAR(100) NOT NULL,
+    code VARCHAR(45),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS credit_product (
+    credit_product_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bank_id UUID NOT NULL REFERENCES bank(bank_id),
+    product_type VARCHAR(100),
+    effective_rate DECIMAL(5, 2),
+    min_amount DECIMAL(12, 2),
+    max_amount DECIMAL(12, 2),
+    min_term INT,
+    max_term INT,
+    min_months INT,
+    max_months INT,
+    requirements TEXT,
+    cae VARCHAR(45),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+
+-- ============================================================
+-- TRANSACTIONS MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS "transaction" (
+    transaction_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    family_group_id UUID REFERENCES family_group(family_group_id),
+    transaction_type_id UUID NOT NULL REFERENCES transaction_type(transaction_type_id),
+    transaction_category_id UUID REFERENCES transaction_category(transaction_category_id),
+    transaction_frequency_id UUID REFERENCES transaction_frequency(transaction_frequency_id),
+    amount DECIMAL(12, 2) NOT NULL,
+    description VARCHAR(255),
+    transaction_date DATE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_user ON "transaction"(user_id);
+CREATE INDEX IF NOT EXISTS idx_transaction_date ON "transaction"(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_transaction_type ON "transaction"(transaction_type_id);
+
+
+-- ============================================================
+-- NEWS MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS news (
+    news_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    summary TEXT,
+    content_text TEXT NOT NULL,
+    source_url VARCHAR(255),
+    image_url VARCHAR(255),
+    published_at TIMESTAMP,
+    impact_level VARCHAR(45),
+    affects VARCHAR(100),
+    target_audience VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS news_tag (
+    tag_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS news_tag_map (
+    news_id UUID NOT NULL REFERENCES news(news_id) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES news_tag(tag_id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID,
+    PRIMARY KEY (news_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS personalized_analysis_news (
+    analysis_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    news_id UUID NOT NULL REFERENCES news(news_id),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    analysis_text TEXT,
+    generated_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS user_interest (
+    interest_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    tag_id UUID NOT NULL REFERENCES news_tag(tag_id),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+
+-- ============================================================
+-- EDUCATION MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS educational_module (
+    educational_module_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    content TEXT,
+    duration INT,
+    difficulty VARCHAR(45),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+-- M2M pivot: a module can have multiple topics
+CREATE TABLE IF NOT EXISTS educational_module_topic (
+    educational_module_id UUID NOT NULL REFERENCES educational_module(educational_module_id) ON DELETE CASCADE,
+    educational_topic_id UUID NOT NULL REFERENCES educational_topic(educational_topic_id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID,
+    PRIMARY KEY (educational_module_id, educational_topic_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_progress (
+    progress_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    educational_module_id UUID NOT NULL REFERENCES educational_module(educational_module_id),
+    status VARCHAR(45),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+
+-- ============================================================
+-- QUIZZES MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS quiz (
+    quiz_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    educational_module_id UUID NOT NULL REFERENCES educational_module(educational_module_id),
+    title VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS question (
+    question_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    quiz_id UUID NOT NULL REFERENCES quiz(quiz_id),
+    question_text TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS answer_option (
+    answer_option_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    question_id UUID NOT NULL REFERENCES question(question_id),
+    answer_text VARCHAR(255),
+    is_correct BOOLEAN NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE TABLE IF NOT EXISTS quiz_result (
+    quiz_result_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    quiz_id UUID NOT NULL REFERENCES quiz(quiz_id),
+    attempt_number INT,
+    correct_answer INT,
+    total_questions INT,
+    score INT,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+
+-- ============================================================
+-- NOTIFICATIONS MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notification (
+    notification_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES "user"(user_id),
+    notification_type_id UUID NOT NULL REFERENCES notification_type(notification_type_id),
+    notification_status_id UUID NOT NULL REFERENCES notification_status(notification_status_id),
+    message TEXT,
+    scheduled_date DATE,
+    reference_id UUID,
+    reference_type VARCHAR(100),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_user ON notification(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_status ON notification(notification_status_id);
+CREATE INDEX IF NOT EXISTS idx_notification_scheduled ON notification(scheduled_date);
+CREATE INDEX IF NOT EXISTS idx_notification_reference
+    ON notification(reference_type, reference_id);
+
+
+-- ============================================================
+-- APPLY updated_at TRIGGERS TO ALL TABLES
+-- ============================================================
+
+DO $$
+DECLARE
+    tbl TEXT;
+BEGIN
+    FOR tbl IN
+        SELECT unnest(ARRAY[
+            'income_type',
+            'transaction_type',
+            'transaction_frequency',
+            'transaction_category',
+            'notification_type',
+            'notification_status',
+            'educational_topic',
+            '"user"',
+            'family_group',
+            'group_member',
+            'group_join_request',
+            'bank',
+            'credit_product',
+            '"transaction"',
+            'news',
+            'news_tag',
+            'news_tag_map',
+            'personalized_analysis_news',
+            'user_interest',
+            'educational_module',
+            'educational_module_topic',
+            'user_progress',
+            'quiz',
+            'question',
+            'answer_option',
+            'quiz_result',
+            'notification'
+        ])
+    LOOP
+        EXECUTE format(
+            'DROP TRIGGER IF EXISTS trg_updated_at ON %s; '
+            'CREATE TRIGGER trg_updated_at BEFORE UPDATE ON %s '
+            'FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();',
+            tbl, tbl
+        );
+    END LOOP;
+END;
+$$;
+
+
+-- ============================================================
+-- SEED LOOKUP TABLES WITH INITIAL VALUES
+-- ============================================================
+
+-- Income Types
+INSERT INTO income_type (name, description) VALUES
+    ('salaried', 'Trabajador dependiente con sueldo fijo'),
+    ('independent', 'Trabajador independiente o freelance'),
+    ('mixed', 'Combinación de ingresos dependientes e independientes'),
+    ('other', 'Otro tipo de ingreso')
+ON CONFLICT (name) DO NOTHING;
+
+-- Transaction Types
+INSERT INTO transaction_type (name, description) VALUES
+    ('income', 'Ingreso de dinero'),
+    ('expense', 'Gasto de dinero')
+ON CONFLICT (name) DO NOTHING;
+
+-- Transaction Frequencies
+INSERT INTO transaction_frequency (name, description) VALUES
+    ('one_time', 'Transacción única, no recurrente'),
+    ('monthly', 'Se repite mensualmente'),
+    ('weekly', 'Se repite semanalmente')
+ON CONFLICT (name) DO NOTHING;
+
+-- Transaction Categories (Expenses)
+INSERT INTO transaction_category (name, description, transaction_type_id) VALUES
+    ('alimentacion', 'Gastos en comida y supermercado',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('transporte', 'Gastos en transporte público, combustible, etc.',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('salud', 'Gastos médicos, farmacia, seguros de salud',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('educacion', 'Gastos en educación, cursos, materiales',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('entretenimiento', 'Gastos en ocio, entretenimiento, suscripciones',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('vivienda', 'Arriendo, dividendo, mantención del hogar',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('servicios_basicos', 'Agua, luz, gas, internet, teléfono',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
+    ('otros_gastos', 'Otros gastos no categorizados',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense'))
+ON CONFLICT (name) DO NOTHING;
+
+-- Transaction Categories (Income)
+INSERT INTO transaction_category (name, description, transaction_type_id) VALUES
+    ('sueldo', 'Sueldo mensual de trabajo dependiente',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
+    ('freelance', 'Ingresos por trabajos independientes',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
+    ('inversiones', 'Retornos de inversiones',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
+    ('otros_ingresos', 'Otros ingresos no categorizados',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income'))
+ON CONFLICT (name) DO NOTHING;
+
+-- Notification Types
+INSERT INTO notification_type (name, description) VALUES
+    ('group_join_request', 'Solicitud de un usuario para unirse a tu grupo familiar'),
+    ('group_join_accepted', 'Tu solicitud para unirse a un grupo fue aceptada'),
+    ('group_join_rejected', 'Tu solicitud para unirse a un grupo fue rechazada'),
+    ('transaction_reminder', 'Recordatorio de una transacción programada'),
+    ('system_info', 'Notificación informativa del sistema'),
+    ('educational_reminder', 'Recordatorio de progreso en módulo educativo')
+ON CONFLICT (name) DO NOTHING;
+
+-- Notification Statuses
+INSERT INTO notification_status (name, description) VALUES
+    ('pending', 'Notificación pendiente de envío'),
+    ('sent', 'Notificación enviada al usuario'),
+    ('read', 'Notificación leída por el usuario'),
+    ('dismissed', 'Notificación descartada por el usuario')
+ON CONFLICT (name) DO NOTHING;
+
+-- Educational Topics
+INSERT INTO educational_topic (name, description) VALUES
+    ('ahorro', 'Estrategias y técnicas de ahorro personal'),
+    ('inversion', 'Conceptos de inversión y mercados financieros'),
+    ('presupuesto', 'Planificación y gestión de presupuesto personal'),
+    ('deudas', 'Manejo y estrategias para salir de deudas'),
+    ('impuestos', 'Educación tributaria y declaración de impuestos'),
+    ('seguros', 'Tipos de seguros y protección financiera'),
+    ('jubilacion', 'Planificación para la jubilación y AFP'),
+    ('emprendimiento', 'Finanzas para emprendedores')
+ON CONFLICT (name) DO NOTHING;
+
+
+-- ============================================================
+-- SCHEMA CREATION COMPLETE
+-- ============================================================

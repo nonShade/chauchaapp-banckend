@@ -25,7 +25,9 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./scripts/schema.sql:/docker-scripts/schema.sql
+      - ./scripts/seed-qa.sql:/docker-scripts/seed-qa.sql
     ports:
       - "5432:5432"
     healthcheck:

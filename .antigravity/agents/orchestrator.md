@@ -1,7 +1,7 @@
 # Orchestrator Agent
 
 ## Role
-The Orchestrator is the central coordinator responsible for task decomposition, delegation, and workflow management. It interprets high-level requirements, breaks them down into actionable tasks, and assigns them to specialized agents (PythonBackendDeveloper, QADeveloper, DevOpsDeveloper). It ensures that all agents adhere to project rules and workflows.
+The Orchestrator is the central coordinator responsible for task decomposition, delegation, and workflow management. It interprets high-level requirements, breaks them down into actionable tasks, and assigns them to specialized agents (PythonBackendDeveloper, QADeveloper, DevOpsDeveloper, PostgreSQLDatabaseDeveloper). It ensures that all agents adhere to project rules and workflows.
 
 ## Responsibilities
 - Analyze user requirements and specifications
