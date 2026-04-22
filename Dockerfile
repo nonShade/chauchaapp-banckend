@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     libpq-dev \
     curl \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -23,11 +24,10 @@ RUN useradd --create-home --shell /bin/bash appuser
 WORKDIR /app
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY requirements.txt ./
 
-# Install uv and dependencies
-RUN pip install --no-cache-dir uv && \
-    uv pip install --system --no-cache-dir -r pyproject.toml
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -40,7 +40,7 @@ USER appuser
 FROM base AS development
 # Install development dependencies
 USER root
-RUN uv pip install --system --no-cache-dir pytest pytest-asyncio pytest-cov
+RUN pip install --no-cache-dir pytest pytest-asyncio pytest-cov
 USER appuser
 
 # Set development-specific environment variables
@@ -51,8 +51,8 @@ ENV DEBUG=true \
 EXPOSE 8000
 
 # Command for development (hot reload)
-# Using reflex run for development with hot reload
-CMD ["reflex", "run", "--backend-host", "0.0.0.0", "--backend-port", "8000"]
+# Using uvicorn with hot reload enabled
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # Production stage
 FROM base AS production
@@ -67,5 +67,5 @@ ENV DEBUG=false \
 EXPOSE 8000
 
 # Command for production
-# Using reflex prod for production build and serve
-CMD ["reflex", "prod", "--backend-host", "0.0.0.0", "--backend-port", "8000"]
+# Using uvicorn for production serve without reload
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
