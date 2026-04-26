@@ -71,7 +71,7 @@ services:
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
 
       # CORS
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8081,http://localhost:8000}
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-DEBUG}
@@ -127,7 +127,7 @@ services:
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-30}
 
       # CORS
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:8081,http://localhost:8000}
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
