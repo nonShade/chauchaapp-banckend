@@ -31,6 +31,12 @@ class LoginRequestDTO(BaseModel):
         return v
 
 
+class VerifyEmailRequestDTO(BaseModel):
+    """Email verification request payload."""
+
+    email: EmailStr
+
+
 class RegisterRequestDTO(BaseModel):
     """Registration request payload with full business-rule validation."""
 
@@ -120,6 +126,13 @@ class RegisterResponseDTO(BaseModel):
 class LogoutResponseDTO(BaseModel):
     """Successful logout response."""
 
+    message: str
+
+
+class VerifyEmailResponseDTO(BaseModel):
+    """Email verification response."""
+
+    exists: bool
     message: str
 
 

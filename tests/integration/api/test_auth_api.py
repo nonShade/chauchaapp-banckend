@@ -265,6 +265,54 @@ class TestLogoutEndpoint:
 
 
 # -----------------------------------------------------------------------
+# Verify Email Endpoint Tests
+# -----------------------------------------------------------------------
+
+
+class TestVerifyEmailEndpoint:
+    """Integration tests for POST /v1/auth/verify-email."""
+
+    def test_verify_email_exists_returns_200(self, client, mock_db, sample_user):
+        """Should return 200 with exists=True."""
+        mock_db.query.return_value.filter.return_value.first.return_value = (
+            sample_user
+        )
+
+        response = client.post(
+            "/v1/auth/verify-email",
+            json={"email": "test@example.com"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["exists"] is True
+        assert data["message"] == "El correo ya se encuentra registrado"
+
+    def test_verify_email_not_exists_returns_200(self, client, mock_db):
+        """Should return 200 with exists=False."""
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
+        response = client.post(
+            "/v1/auth/verify-email",
+            json={"email": "new@example.com"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["exists"] is False
+        assert data["message"] == "El correo está disponible"
+
+    def test_verify_email_invalid_format_returns_422(self, client):
+        """Should return 422 for invalid email format."""
+        response = client.post(
+            "/v1/auth/verify-email",
+            json={"email": "not-an-email"},
+        )
+
+        assert response.status_code == 422
+
+
+# -----------------------------------------------------------------------
 # Health Check
 # -----------------------------------------------------------------------
 

@@ -244,3 +244,30 @@ class TestLogout:
         """Logout with invalid token raises ValueError."""
         with pytest.raises(ValueError):
             service.logout("not-a-valid-jwt")
+
+
+# -----------------------------------------------------------------------
+# Verify Email Tests
+# -----------------------------------------------------------------------
+
+
+class TestVerifyEmail:
+    """Tests for AuthService.verify_email()."""
+
+    def test_verify_email_exists_returns_true(self, service, mock_repository, sample_user):
+        """Should return exists=True if email found in DB."""
+        mock_repository.get_user_by_email.return_value = sample_user
+
+        result = service.verify_email("test@example.com")
+
+        assert result.exists is True
+        assert result.message == "El correo ya se encuentra registrado"
+
+    def test_verify_email_not_exists_returns_false(self, service, mock_repository):
+        """Should return exists=False if email not found in DB."""
+        mock_repository.get_user_by_email.return_value = None
+
+        result = service.verify_email("new@example.com")
+
+        assert result.exists is False
+        assert result.message == "El correo está disponible"

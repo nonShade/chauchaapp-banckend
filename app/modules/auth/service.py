@@ -14,7 +14,8 @@ from app.modules.auth.dto import (
     LogoutResponseDTO,
     RegisterRequestDTO,
     RegisterResponseDTO,
-    UserResponseDTO
+    UserResponseDTO,
+    VerifyEmailResponseDTO
 )
 from app.modules.auth.exceptions import (
     EmailAlreadyExistsException,
@@ -152,3 +153,21 @@ class AuthService:
             token_blacklist.blacklist_token(jti, exp)
 
         return LogoutResponseDTO(message="Cierre de sesión exitoso")
+
+    def verify_email(self, email: str) -> VerifyEmailResponseDTO:
+        """Check if an email already exists in the database.
+
+        Args:
+            email: The email address to verify.
+
+        Returns:
+            Response indicating if the email exists and a descriptive message.
+        """
+        user = self._repository.get_user_by_email(email)
+        exists = user is not None
+        message = (
+            "El correo ya se encuentra registrado"
+            if exists
+            else "El correo está disponible"
+        )
+        return VerifyEmailResponseDTO(exists=exists, message=message)

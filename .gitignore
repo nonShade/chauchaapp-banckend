@@ -38,7 +38,7 @@ result-*
 .idea/
 *.swp
 *.swo
-# .antigravity/
+.antigravity/
 .docs/
 
 # ===== OS =====

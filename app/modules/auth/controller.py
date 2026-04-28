@@ -17,6 +17,8 @@ from app.modules.auth.dto import (
     LogoutResponseDTO,
     RegisterRequestDTO,
     RegisterResponseDTO,
+    VerifyEmailRequestDTO,
+    VerifyEmailResponseDTO,
 )
 from app.modules.auth.exceptions import (
     EmailAlreadyExistsException,
@@ -124,3 +126,17 @@ def logout(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no autenticado",
         )
+
+
+@router.post(
+    "/verify-email",
+    response_model=VerifyEmailResponseDTO,
+    summary="Verificar disponibilidad de correo",
+    description="Comprueba si un correo electrónico ya existe en la base de datos.",
+)
+def verify_email(
+    dto: VerifyEmailRequestDTO,
+    service: AuthService = Depends(_get_auth_service),
+):
+    """Check if an email is already registered."""
+    return service.verify_email(dto.email)
