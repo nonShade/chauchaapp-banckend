@@ -29,7 +29,7 @@ INSERT INTO "user" (
         'test_login@chauchaapp.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1990-05-15',
-        (SELECT income_type_id FROM income_type WHERE name = 'salaried'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Sueldo fijo'),
         850000.00, 620000.00
     ),
     -- User 2: Register flow test user
@@ -38,7 +38,7 @@ INSERT INTO "user" (
         'test_register@chauchaapp.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1995-08-22',
-        (SELECT income_type_id FROM income_type WHERE name = 'independent'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Independiente'),
         1200000.00, 780000.00
     ),
     -- User 3: María González - Salaried
@@ -47,7 +47,7 @@ INSERT INTO "user" (
         'maria.gonzalez@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1988-03-10',
-        (SELECT income_type_id FROM income_type WHERE name = 'salaried'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Sueldo fijo'),
         1500000.00, 980000.00
     ),
     -- User 4: Carlos Muñoz - Independent
@@ -56,7 +56,7 @@ INSERT INTO "user" (
         'carlos.munoz@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1992-11-28',
-        (SELECT income_type_id FROM income_type WHERE name = 'independent'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Independiente'),
         2000000.00, 1350000.00
     ),
     -- User 5: Valentina Rojas - Mixed
@@ -65,7 +65,7 @@ INSERT INTO "user" (
         'valentina.rojas@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1985-07-03',
-        (SELECT income_type_id FROM income_type WHERE name = 'mixed'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Mixto'),
         1800000.00, 1100000.00
     ),
     -- User 6: Andrés Silva - Salaried
@@ -74,7 +74,7 @@ INSERT INTO "user" (
         'andres.silva@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1998-01-20',
-        (SELECT income_type_id FROM income_type WHERE name = 'salaried'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Sueldo fijo'),
         650000.00, 520000.00
     ),
     -- User 7: Camila Torres - Other
@@ -83,7 +83,7 @@ INSERT INTO "user" (
         'camila.torres@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1993-09-14',
-        (SELECT income_type_id FROM income_type WHERE name = 'other'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Otro'),
         900000.00, 670000.00
     ),
     -- User 8: Diego Fernández - Salaried
@@ -92,7 +92,7 @@ INSERT INTO "user" (
         'diego.fernandez@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1987-12-05',
-        (SELECT income_type_id FROM income_type WHERE name = 'salaried'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Sueldo fijo'),
         2500000.00, 1800000.00
     ),
     -- User 9: Javiera López - Independent
@@ -101,7 +101,7 @@ INSERT INTO "user" (
         'javiera.lopez@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1996-04-18',
-        (SELECT income_type_id FROM income_type WHERE name = 'independent'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Independiente'),
         1100000.00, 850000.00
     ),
     -- User 10: Felipe Martínez - Mixed
@@ -110,7 +110,7 @@ INSERT INTO "user" (
         'felipe.martinez@test.cl',
         crypt('TestPass123!', gen_salt('bf')),
         '1991-06-30',
-        (SELECT income_type_id FROM income_type WHERE name = 'mixed'),
+        (SELECT income_type_id FROM income_type WHERE name = 'Mixto'),
         3000000.00, 2100000.00
     )
 ON CONFLICT (email) DO NOTHING;

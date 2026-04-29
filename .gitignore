@@ -1,3 +1,6 @@
+.states
+*.db
+.web
 # ===== Reflex =====
 .web/
 .states/
@@ -35,7 +38,7 @@ result-*
 .idea/
 *.swp
 *.swo
-# .antigravity/
+.antigravity/
 .docs/
 
 # ===== OS =====
