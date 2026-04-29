@@ -41,3 +41,10 @@ class UnauthorizedException(AppException):
 
     def __init__(self, message: str = "Usuario no autenticado"):
         super().__init__(message=message, code="UNAUTHORIZED")
+
+
+class ForbiddenException(AppException):
+    """Raised when a user is not allowed to perform an action."""
+
+    def __init__(self, message: str = "No tienes permiso para realizar esta acción"):
+        super().__init__(message=message, code="FORBIDDEN")

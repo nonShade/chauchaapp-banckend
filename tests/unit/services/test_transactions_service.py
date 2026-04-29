@@ -1,0 +1,249 @@
+from datetime import date
+from decimal import Decimal
+from unittest.mock import MagicMock
+import uuid
+
+import pytest
+
+from app.modules.transactions.entities import (
+    Transaction,
+    TransactionCategory,
+    TransactionFrequency,
+    TransactionType,
+)
+from app.modules.transactions.repository import TransactionsRepository
+from app.modules.transactions.service import TransactionsService
+from app.modules.transactions.dto import (
+    TransactionCategoryResponseDTO,
+    TransactionCreateDTO,
+    TransactionFrequencyResponseDTO,
+    TransactionPaginationResponseDTO,
+    TransactionResponseDTO,
+    TransactionTypeResponseDTO,
+    TransactionUpdateDTO,
+)
+from app.shared.exceptions import ForbiddenException, NotFoundException
+
+
+@pytest.fixture
+def mock_repository():
+    return MagicMock(spec=TransactionsRepository)
+
+
+@pytest.fixture
+def service(mock_repository):
+    return TransactionsService(repository=mock_repository)
+
+
+def test_get_transaction_types(service, mock_repository):
+    # Arrange
+    fake_id = uuid.uuid4()
+    fake_type = TransactionType(transaction_type_id=fake_id, name="ingreso", description="Ingreso desc")
+    mock_repository.get_all_transaction_types.return_value = [fake_type]
+
+    # Act
+    result = service.get_transaction_types()
+
+    # Assert
+    mock_repository.get_all_transaction_types.assert_called_once()
+    assert len(result) == 1
+    assert isinstance(result[0], TransactionTypeResponseDTO)
+    assert result[0].id == fake_id
+    assert result[0].name == "ingreso"
+    assert result[0].description == "Ingreso desc"
+
+
+def test_get_transaction_frequencies(service, mock_repository):
+    # Arrange
+    fake_id = uuid.uuid4()
+    fake_freq = TransactionFrequency(transaction_frequency_id=fake_id, name="mensual", description="Mensual desc")
+    mock_repository.get_all_transaction_frequencies.return_value = [fake_freq]
+
+    # Act
+    result = service.get_transaction_frequencies()
+
+    # Assert
+    mock_repository.get_all_transaction_frequencies.assert_called_once()
+    assert len(result) == 1
+    assert isinstance(result[0], TransactionFrequencyResponseDTO)
+    assert result[0].id == fake_id
+    assert result[0].name == "mensual"
+    assert result[0].description == "Mensual desc"
+
+
+def test_get_transaction_categories(service, mock_repository):
+    # Arrange
+    fake_cat_id = uuid.uuid4()
+    fake_type_id = uuid.uuid4()
+    fake_cat = TransactionCategory(
+        transaction_category_id=fake_cat_id,
+        name="salud",
+        description="Gastos medicos",
+        transaction_type_id=fake_type_id,
+    )
+    mock_repository.get_all_transaction_categories.return_value = [fake_cat]
+
+    # Act
+    result = service.get_transaction_categories()
+
+    # Assert
+    mock_repository.get_all_transaction_categories.assert_called_once()
+    assert len(result) == 1
+    assert isinstance(result[0], TransactionCategoryResponseDTO)
+    assert result[0].id == fake_cat_id
+    assert result[0].name == "salud"
+    assert result[0].description == "Gastos medicos"
+    assert result[0].transaction_type_id == fake_type_id
+
+
+def test_create_transaction(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    type_id = uuid.uuid4()
+    cat_id = uuid.uuid4()
+    data = TransactionCreateDTO(
+        amount=Decimal("15000"),
+        transaction_type_id=type_id,
+        transaction_category_id=cat_id,
+        transaction_date=date(2026, 4, 29),
+    )
+
+    mock_repository.create_transaction.side_effect = lambda t: setattr(t, 'transaction_id', uuid.uuid4()) or t
+
+    # Act
+    result = service.create_transaction(user_id, data)
+
+    # Assert
+    mock_repository.create_transaction.assert_called_once()
+    assert result.amount == Decimal("15000")
+    assert result.transaction_type_id == type_id
+    assert result.transaction_category_id == cat_id
+
+
+def test_update_transaction_success(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    tx_id = uuid.uuid4()
+    existing_tx = Transaction(
+        transaction_id=tx_id, user_id=user_id, amount=Decimal("1000"), 
+        transaction_date=date(2026, 1, 1), transaction_type_id=uuid.uuid4()
+    )
+    mock_repository.get_transaction_by_id.return_value = existing_tx
+    
+    data = TransactionUpdateDTO(amount=Decimal("2000"))
+    mock_repository.update_transaction.return_value = Transaction(
+        transaction_id=tx_id, user_id=user_id, amount=Decimal("2000"),
+        transaction_date=date(2026, 1, 1), transaction_type_id=uuid.uuid4()
+    )
+
+    # Act
+    result = service.update_transaction(user_id, tx_id, data)
+
+    # Assert
+    assert result.amount == Decimal("2000")
+    mock_repository.update_transaction.assert_called_once()
+
+
+def test_update_transaction_not_owner(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    other_user_id = uuid.uuid4()
+    tx_id = uuid.uuid4()
+    existing_tx = Transaction(
+        transaction_id=tx_id, user_id=other_user_id, amount=Decimal("1000"),
+        transaction_date=date(2026, 1, 1), transaction_type_id=uuid.uuid4()
+    )
+    mock_repository.get_transaction_by_id.return_value = existing_tx
+
+    # Act & Assert
+    with pytest.raises(ForbiddenException):
+        service.update_transaction(user_id, tx_id, TransactionUpdateDTO(amount=Decimal("500")))
+
+
+def test_delete_transaction_success(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    tx_id = uuid.uuid4()
+    existing_tx = Transaction(transaction_id=tx_id, user_id=user_id)
+    mock_repository.get_transaction_by_id.return_value = existing_tx
+    mock_repository.delete_transaction.return_value = True
+
+    # Act
+    result = service.delete_transaction(user_id, tx_id)
+
+    # Assert
+    assert result is True
+    mock_repository.delete_transaction.assert_called_once_with(tx_id)
+
+
+def test_get_user_transactions(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    tx = Transaction(
+        transaction_id=uuid.uuid4(),
+        user_id=user_id,
+        amount=Decimal("100"),
+        transaction_date=date(2026, 1, 1),
+        transaction_type_id=uuid.uuid4()
+    )
+    mock_repository.get_transactions_by_user.return_value = ([tx], 1)
+
+    # Act
+    result = service.get_user_transactions(user_id, page=1, limit=10)
+
+    # Assert
+    assert result.meta.totalItems == 1
+    assert len(result.data) == 1
+    assert result.data[0].amount == Decimal("100")
+
+
+def test_get_financial_summary(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    mock_repository.get_totals_by_type.return_value = [
+        ("ingreso", Decimal("1000")),
+        ("gasto", Decimal("400"))
+    ]
+
+    # Act
+    result = service.get_financial_summary(user_id)
+
+    # Assert
+    assert result.total_income == Decimal("1000")
+    assert result.total_expenses == Decimal("400")
+    assert result.total_balance == Decimal("600")
+
+
+def test_get_expense_distribution(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    cat_id = uuid.uuid4()
+    mock_repository.get_distribution_by_category.return_value = [
+        (cat_id, "Comida", Decimal("100"))
+    ]
+
+    # Act
+    result = service.get_expense_distribution(user_id)
+
+    # Assert
+    assert len(result) == 1
+    assert result[0].category_name == "Comida"
+    assert result[0].percentage == 100.0
+
+
+def test_get_income_vs_expenses(service, mock_repository):
+    # Arrange
+    user_id = uuid.uuid4()
+    mock_repository.get_monthly_comparison.return_value = [
+        ("2026-03", "ingreso", Decimal("100")),
+        ("2026-03", "gasto", Decimal("50"))
+    ]
+
+    # Act
+    result = service.get_income_vs_expenses(user_id)
+
+    # Assert
+    assert len(result) == 1
+    assert result[0].month == "2026-03"
+    assert result[0].income == Decimal("100")
+    assert result[0].expenses == Decimal("50")
