@@ -18,6 +18,7 @@ wheels/
 .pytest_cache/
 .coverage
 htmlcov/
+.pi-lens/
 
 # ===== Entorno virtual =====
 .venv/

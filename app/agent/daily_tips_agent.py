@@ -4,23 +4,42 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from agno.agent import Agent
 from agno.models.nvidia import Nvidia
+from agno.tools.tavily import TavilyTools
 
 load_dotenv()
+
 
 class DailyTip(BaseModel):
     """Modelo para un tip financiero individual."""
     titulo: str = Field(..., description="Título del tip financiero")
-    texto: str = Field(..., description="Contenido detallado del tip financiero")
-    categoria: str = Field(..., description="Categoría a la que pertenece el tip")
+    texto: str = Field(...,
+                       description="Contenido detallado del tip financiero")
+    categoria: str = Field(...,
+                           description="Categoría a la que pertenece el tip")
     day_of_week: Optional[int] = Field(
         None,
-        description="Día de la semana (0=Lunes, 6=Domingo, 7=Extra). Opcional para tips individuales."
+        description="Día de la semana (0=Lunes, 6=Domingo). Opcional para tips individuales."
+    )
+
+
+class DailyTipWeekly(BaseModel):
+    """Modelo para un tip financiero en un batch semanal (day_of_week requerido)."""
+    titulo: str = Field(..., description="Título del tip financiero")
+    texto: str = Field(...,
+                       description="Contenido detallado del tip financiero")
+    categoria: str = Field(...,
+                           description="Categoría a la que pertenece el tip")
+    day_of_week: int = Field(
+        ...,
+        description="Día de la semana (0=Lunes, 6=Domingo). Requerido para batch semanal.",
+        ge=0,
+        le=6
     )
 
 
 class DailyTipBatch(BaseModel):
     """Modelo para un lote de 7 tips financieros semanales."""
-    tips: list[DailyTip] = Field(
+    tips: list[DailyTipWeekly] = Field(
         ...,
         description="Lista de exactamente 7 tips financieros para la semana"
     )
@@ -28,7 +47,9 @@ class DailyTipBatch(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         if len(self.tips) != 7:
-            raise ValueError(f"Se esperaban exactamente 7 tips, se recibieron: {len(self.tips)}")
+            raise ValueError(f"Se esperaban exactamente 7 tips, se recibieron: {
+                             len(self.tips)}")
+
 
 class DailyTipsAgent:
     """Agente para generar tips financieros diarios usando modelos de Nvidia.
@@ -96,28 +117,21 @@ class DailyTipsAgent:
             id="qwen/qwen3-coder-480b-a35b-instruct",
             api_key=api_key,
         )
+        instructions = f"""Eres un experto en finanzas personales para Chile.
+            Categorías permitidas: {', '.join(self.ALLOWED_CATEGORIES)}
 
-        # Instrucciones explícitas para el agente
-        instructions = f"""Eres un experto en finanzas personales e inversiones con conocimiento profundo de la economía chilena.
-
-Tu rol es generar tips financieros prácticos, accionables y específicamente diseñados para personas en Chile.
-
-Categorías permitidas para los tips:
-{', '.join(self.ALLOWED_CATEGORIES)}
-
-REGLAS IMPORTANTES:
-1. TODOS los tips DEBEN ser específicos del contexto económico chileno
-2. Menciona: moneda CLP, instituciones chilenas (AFP, bancos locales, SII), indicadores chilenos (UF, IPC, salario mínimo)
-3. Los consejos deben ser relevantes para la realidad financiera de Chile
-4. NO menciones otros países, monedas foráneas ni contextos internacionales
-5. Cada tip debe ser conciso, práctico y fácil de implementar
-6. Valida que la categoría esté en la lista permitida antes de responder
-
-Responde SIEMPRE con la estructura JSON exacta especificada, sin texto adicional.
-"""
+            REGLAS ABSOLUTAS:
+            1. Todos los tips deben ser específicos del contexto económico chileno (CLP, AFP, SII, UF).
+            2. NUNCA inventes valores numéricos. Si un tip menciona cifras, DEBES haberlas obtenido
+            con la herramienta web_search ANTES de incluirlas.
+            3. Si no tienes datos actualizados de una cifra, omite el número o usa una referencia
+            genérica como "según el valor vigente de la UF".
+            4. Usa SOLO las categorías permitidas.
+            5. Responde SIEMPRE con el JSON exacto requerido, sin texto adicional."""
 
         agent = Agent(
             name="DailyTipsAgent",
+            tools=[TavilyTools()],
             model=model,
             instructions=instructions,
             description="Agente para generar tips financieros diarios personalizados para Chile",
@@ -137,18 +151,16 @@ Responde SIEMPRE con la estructura JSON exacta especificada, sin texto adicional
         Raises:
             Exception: Si falla la generación del tip
         """
+        context = self._get_chile_context()
         categories_str = ', '.join(self.ALLOWED_CATEGORIES)
+        prompt = f"""CONTEXTO ECONÓMICO REAL (obtenido con búsqueda web, NO inventado):
+        {context}
 
-        prompt = f"""Genera 1 tip financiero en español EXCLUSIVAMENTE PARA CHILE.
-
-El tip debe:
-1. Ser conciso, práctico y accionable
-2. Pertenecer a UNA de estas categorías: {categories_str}
-3. Ser específico de la economía chilena (menciona CLP, instituciones chilenas, etc.)
-4. Proporcionar un consejo útil para personas en Chile
-
-Responde SOLO con el JSON, sin texto adicional.
-"""
+        INSTRUCCIÓN: Genera 1 tip financiero para Chile.
+        - Usa SOLO los datos del contexto de arriba
+        - Si el contexto dice "dato no encontrado" para algo, NO lo incluyas en el tip
+        - Categoría DEBE ser una de: {categories_str}
+        - Responde SOLO con JSON, sin texto adicional"""
 
         try:
             response = self.agent.run(prompt, output_schema=DailyTip)
@@ -158,7 +170,7 @@ Responde SOLO con el JSON, sin texto adicional.
         except Exception as e:
             raise Exception(f"Error al generar tip diario: {str(e)}")
 
-def generate_weekly_tips_batch(self) -> list[DailyTip]:
+    def generate_weekly_tips_batch(self) -> list[DailyTipWeekly]:
         """
         Genera 7 tips financieros en UNA SOLA llamada a la IA.
         Optimizado para usar modelos gratuitos de Nvidia sin limites de rate.
@@ -171,30 +183,39 @@ def generate_weekly_tips_batch(self) -> list[DailyTip]:
         Raises:
             Exception: Si falla la generación o validación de tips
         """
+        context = self._get_chile_context()
         categories_str = ', '.join(self.ALLOWED_CATEGORIES)
 
-        prompt = f"""Genera exactamente 7 tips financieros en español EXCLUSIVAMENTE PARA CHILE, uno para cada día de la semana (lunes a domingo).
+        prompt = f"""CONTEXTO ECONÓMICO REAL DE CHILE (obtenido con búsqueda web):
+        {context}
 
-        REQUISITOS:
-        - Cada tip DEBE ser específico de la economía chilena
-        - Menciona: moneda chilena (CLP), instituciones chilenas (AFP, bancos chilenos, SII), indicadores chilena (UF, IPC, salario mínimo)
-        - Cada tip pertenece a UNA de estas categorías: {categories_str}
-        - Los tips deben variar en categorías para dar diversidad durante la semana
-        - Consejos prácticos, accionables y relevantes para personas en Chile
-        - NO menciones otros países, monedas foráneas ni contextos internacionales
+        INSTRUCCIÓN: Genera exactamente 7 tips financieros para Chile (lunes a domingo).
 
-        Asigna day_of_week de 0 a 6 (0=Lunes, 6=Domingo).
-
-        Responde SOLO con un array JSON de 7 objetos con estructura exacta.
-        """
+        REGLAS ESTRICTAS:
+        - Usa ÚNICAMENTE los números del contexto de arriba
+        - Si el contexto marca "dato no encontrado", NO uses ese número
+        - Varía las categorías durante la semana
+        - Categorías permitidas: {categories_str}
+        - Asigna day_of_week de 0 (Lunes) a 6 (Domingo)
+        - Responde SOLO con el JSON, sin texto adicional"""
 
         try:
+            import json
+
             response = self.agent.run(prompt, output_schema=DailyTipBatch)
 
             if response.content is None:
                 raise ValueError("El modelo no devolvió un contenido válido")
 
-            batch = response.content
+            # Manejar response.content como string JSON o como objeto
+            if isinstance(response.content, str):
+                content_dict = json.loads(response.content)
+            else:
+                content_dict = response.content.model_dump() if hasattr(
+                    response.content, 'model_dump') else response.content
+
+            batch = DailyTipBatch(**content_dict) if isinstance(content_dict,
+                                                                dict) else DailyTipBatch(**content_dict.model_dump())
             tips_list = batch.tips
 
             for i, tip in enumerate(tips_list):
@@ -216,32 +237,54 @@ def generate_weekly_tips_batch(self) -> list[DailyTip]:
 
         Returns:
             Optional[DailyTip]: Objeto DailyTip si tiene éxito, None si hay error
-
-        Note:
-            Para mejor debugging, considera capturar la excepción en el llamador
-            y loguear el error explícitamente.
         """
         try:
             return self.generate_daily_tip()
         except Exception as e:
-            print(f"[ERROR] Error en DailyTipsAgent.get_daily_tip_safe(): {str(e)}")
+            print(
+                f"[ERROR] Error en DailyTipsAgent.get_daily_tip_safe(): {str(e)}")
             return None
 
-    def get_weekly_tips_batch_safe(self) -> Optional[list[DailyTip]]:
+    def _get_chile_context(self) -> str:
+        search_agent = Agent(
+            name="ContextSearchAgent",
+            tools=[TavilyTools()],
+            model=Nvidia(
+                id="qwen/qwen3-coder-480b-a35b-instruct",
+                api_key=self._get_nvidia_api_key(),
+            ),
+            instructions="""Tu ÚNICA función es buscar información con web_search.
+            NUNCA respondas con datos de tu memoria de entrenamiento.
+            SIEMPRE usa la herramienta web_search antes de responder.
+            Si no usas la herramienta, tu respuesta es inválida.""",
+        )
+
+        response = search_agent.run(
+            """Usa web_search para buscar AHORA mismo (no uses tu memoria):
+            1. "sueldo mínimo Chile 2025 - 2026 valor actual"
+            2. "valor UF Chile hoy"
+            3. "IPC inflación Chile últimos 12 meses"
+            4. "precio bencina Chile hoy"
+
+            Busca cada término por separado y resume los resultados con los
+            números EXACTOS que encontraste. Si no encuentras algún dato,
+            escribe explícitamente "dato no encontrado" para esa categoría."""
+        )
+        return response.content if response.content else ""
+
+    def get_weekly_tips_batch_safe(self) -> Optional[list[DailyTipWeekly]]:
         """
         Genera un lote de 7 tips semanales con manejo seguro de errores.
 
         Returns:
             Optional[list[DailyTip]]: Lista de 7 tips si tiene éxito, None si hay error
-
-        Note:
-            Para mejor debugging, considera capturar la excepción en el llamador
-            y loguear el error explícitamente.
         """
         try:
             return self.generate_weekly_tips_batch()
         except Exception as e:
-            print(f"[ERROR] Error en DailyTipsAgent.get_weekly_tips_batch_safe(): {str(e)}")
+            print(
+                f"[ERROR] Error en DailyTipsAgent.get_weekly_tips_batch_safe(): {str(e)}")
             return None
+
 
 daily_tips_agent = DailyTipsAgent()

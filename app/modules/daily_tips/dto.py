@@ -10,7 +10,8 @@ class DailyTipCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     text: str = Field(..., min_length=1)
     category: str = Field(..., min_length=1, max_length=100)
-    day_of_week: int = Field(..., ge=0, le=6, description="0=Lunes, ..., 6=Domingo")
+    day_of_week: int = Field(..., ge=0, le=6,
+                             description="0=Lunes, ..., 6=Domingo")
 
 
 class DailyTipUpdate(BaseModel):

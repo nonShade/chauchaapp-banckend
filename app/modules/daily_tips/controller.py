@@ -93,10 +93,10 @@ def generate_tips_batch(db: Session = Depends(get_db)) -> DailyTipBatchResponse:
 
         tips_create = [
             DailyTipCreate(
-                title=tip["titulo"],
-                text=tip["texto"],
-                category=tip["categoria"],
-                day_of_week=tip["day_of_week"],
+                title=tip.titulo,
+                text=tip.texto,
+                category=tip.categoria,
+                day_of_week=tip.day_of_week if tip.day_of_week is not None else 0,
             )
             for tip in tips_data
         ]

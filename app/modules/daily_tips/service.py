@@ -56,7 +56,8 @@ class DailyTipService:
         self.db.commit()
 
         return DailyTipBatchResponse(
-            tips=[DailyTipResponse.model_validate(tip) for tip in created_tips],
+            tips=[DailyTipResponse.model_validate(
+                tip) for tip in created_tips],
             total_count=len(created_tips),
             generated_at=datetime.utcnow(),
         )
