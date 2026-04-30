@@ -19,8 +19,10 @@
             pkgs.python312
             pkgs.uv
             pkgs.git
+            pkgs.nodejs
             pkgs.docker
             pkgs.docker-compose
+            pkgs.postgresql
           ];
 
           shellHook = ''
