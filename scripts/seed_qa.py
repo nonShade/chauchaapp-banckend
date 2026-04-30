@@ -35,6 +35,7 @@ from app.modules.transactions.entities import (
     TransactionType,
     TransactionFrequency,
     TransactionCategory,
+    Transaction,
 )
 from app.modules.notifications.entities import NotificationType, NotificationStatus
 from app.modules.education.entities import EducationalTopic
@@ -60,10 +61,10 @@ def seed_lookup_tables(session):
 
     # Income Types
     income_types = [
-        IncomeType(name="salaried", description="Trabajador dependiente con sueldo fijo"),
-        IncomeType(name="independent", description="Trabajador independiente o freelance"),
-        IncomeType(name="mixed", description="Combinación de ingresos dependientes e independientes"),
-        IncomeType(name="other", description="Otro tipo de ingreso"),
+        IncomeType(name="Sueldo fijo", description="Trabajador dependiente con sueldo fijo"),
+        IncomeType(name="Independiente", description="Trabajador independiente o freelance"),
+        IncomeType(name="Mixto", description="Combinación de ingresos dependientes e independientes"),
+        IncomeType(name="Otro", description="Otro tipo de ingreso"),
     ]
     for it in income_types:
         existing = session.query(IncomeType).filter_by(name=it.name).first()
@@ -72,8 +73,8 @@ def seed_lookup_tables(session):
 
     # Transaction Types
     transaction_types_data = [
-        ("income", "Ingreso de dinero"),
-        ("expense", "Gasto de dinero"),
+        ("Ingreso", "Ingreso de dinero"),
+        ("Gasto", "Gasto de dinero"),
     ]
     for name, desc in transaction_types_data:
         if not session.query(TransactionType).filter_by(name=name).first():
@@ -83,27 +84,27 @@ def seed_lookup_tables(session):
 
     # Transaction Frequencies
     frequencies_data = [
-        ("one_time", "Transacción única, no recurrente"),
-        ("monthly", "Se repite mensualmente"),
-        ("weekly", "Se repite semanalmente"),
+        ("Única", "Transacción única, no recurrente"),
+        ("Mensual", "Se repite mensualmente"),
+        ("Semanal", "Se repite semanalmente"),
     ]
     for name, desc in frequencies_data:
         if not session.query(TransactionFrequency).filter_by(name=name).first():
             session.add(TransactionFrequency(name=name, description=desc))
 
     # Transaction Categories
-    expense_type = session.query(TransactionType).filter_by(name="expense").first()
-    income_type = session.query(TransactionType).filter_by(name="income").first()
+    expense_type = session.query(TransactionType).filter_by(name="Gasto").first()
+    income_type = session.query(TransactionType).filter_by(name="Ingreso").first()
 
     expense_categories = [
-        ("alimentacion", "Gastos en comida y supermercado"),
-        ("transporte", "Gastos en transporte público, combustible, etc."),
-        ("salud", "Gastos médicos, farmacia, seguros de salud"),
-        ("educacion", "Gastos en educación, cursos, materiales"),
-        ("entretenimiento", "Gastos en ocio, entretenimiento, suscripciones"),
-        ("vivienda", "Arriendo, dividendo, mantención del hogar"),
-        ("servicios_basicos", "Agua, luz, gas, internet, teléfono"),
-        ("otros_gastos", "Otros gastos no categorizados"),
+        ("Alimentación", "Gastos en comida y supermercado"),
+        ("Transporte", "Gastos en transporte público, combustible, etc."),
+        ("Salud", "Gastos médicos, farmacia, seguros de salud"),
+        ("Educación", "Gastos en educación, cursos, materiales"),
+        ("Entretenimiento", "Gastos en ocio, entretenimiento, suscripciones"),
+        ("Vivienda", "Arriendo, dividendo, mantención del hogar"),
+        ("Servicios Básicos", "Agua, luz, gas, internet, teléfono"),
+        ("Otros Gastos", "Otros gastos no categorizados"),
     ]
     for name, desc in expense_categories:
         if not session.query(TransactionCategory).filter_by(name=name).first():
@@ -113,10 +114,10 @@ def seed_lookup_tables(session):
             ))
 
     income_categories = [
-        ("sueldo", "Sueldo mensual de trabajo dependiente"),
-        ("freelance", "Ingresos por trabajos independientes"),
-        ("inversiones", "Retornos de inversiones"),
-        ("otros_ingresos", "Otros ingresos no categorizados"),
+        ("Sueldo", "Sueldo mensual de trabajo dependiente"),
+        ("Freelance", "Ingresos por trabajos independientes"),
+        ("Inversiones", "Retornos de inversiones"),
+        ("Otros Ingresos", "Otros ingresos no categorizados"),
     ]
     for name, desc in income_categories:
         if not session.query(TransactionCategory).filter_by(name=name).first():
@@ -174,10 +175,10 @@ def seed_users(session):
     hashed_pw = hash_password(TEST_PASSWORD)
 
     # Get income type references
-    salaried = session.query(IncomeType).filter_by(name="salaried").first()
-    independent = session.query(IncomeType).filter_by(name="independent").first()
-    mixed = session.query(IncomeType).filter_by(name="mixed").first()
-    other = session.query(IncomeType).filter_by(name="other").first()
+    salaried = session.query(IncomeType).filter_by(name="Sueldo fijo").first()
+    independent = session.query(IncomeType).filter_by(name="Independiente").first()
+    mixed = session.query(IncomeType).filter_by(name="Mixto").first()
+    other = session.query(IncomeType).filter_by(name="Otro").first()
 
     test_users = [
         # Auth test users
@@ -263,6 +264,100 @@ def seed_users(session):
     print("  ✓ Test users seeded (10 users)")
 
 
+def seed_transactions(session):
+    """Seed sample transactions for the main test user."""
+
+    # Get references
+    test_user = session.query(User).filter_by(email="test_login@chauchaapp.cl").first()
+    if not test_user:
+        return
+
+    expense_type = session.query(TransactionType).filter_by(name="Gasto").first()
+    income_type = session.query(TransactionType).filter_by(name="Ingreso").first()
+    one_time = session.query(TransactionFrequency).filter_by(name="Única").first()
+    monthly = session.query(TransactionFrequency).filter_by(name="Mensual").first()
+
+    # Get categories
+    alimentacion = session.query(TransactionCategory).filter_by(name="Alimentación").first()
+    transporte = session.query(TransactionCategory).filter_by(name="Transporte").first()
+    vivienda = session.query(TransactionCategory).filter_by(name="Vivienda").first()
+    salud = session.query(TransactionCategory).filter_by(name="Salud").first()
+    sueldo = session.query(TransactionCategory).filter_by(name="Sueldo").first()
+    entretenimiento = session.query(TransactionCategory).filter_by(name="Entretenimiento").first()
+
+    sample_transactions = [
+        # Incomes
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("850000.00"),
+            transaction_type_id=income_type.transaction_type_id,
+            transaction_category_id=sueldo.transaction_category_id,
+            transaction_frequency_id=monthly.transaction_frequency_id,
+            description="Sueldo Abril",
+            transaction_date=date(2026, 4, 1),
+        ),
+        # Expenses
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("45000.00"),
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=alimentacion.transaction_category_id,
+            transaction_frequency_id=one_time.transaction_frequency_id,
+            description="Súper Líder",
+            transaction_date=date(2026, 4, 5),
+        ),
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("15000.00"),
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=transporte.transaction_category_id,
+            transaction_frequency_id=one_time.transaction_frequency_id,
+            description="Carga Bip",
+            transaction_date=date(2026, 4, 6),
+        ),
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("8500.00"),
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=entretenimiento.transaction_category_id,
+            transaction_frequency_id=monthly.transaction_frequency_id,
+            description="Netflix",
+            transaction_date=date(2026, 4, 10),
+        ),
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("120000.00"),
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=alimentacion.transaction_category_id,
+            transaction_frequency_id=one_time.transaction_frequency_id,
+            description="Cena Aniversario",
+            transaction_date=date(2026, 4, 15),
+        ),
+        Transaction(
+            user_id=test_user.user_id,
+            amount=Decimal("32000.00"),
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=salud.transaction_category_id,
+            transaction_frequency_id=one_time.transaction_frequency_id,
+            description="Farmacia Cruz Verde",
+            transaction_date=date(2026, 4, 20),
+        ),
+    ]
+
+    for tx in sample_transactions:
+        # Simple check to avoid duplicates on every run if based on description and date
+        existing = session.query(Transaction).filter_by(
+            user_id=test_user.user_id,
+            description=tx.description,
+            transaction_date=tx.transaction_date
+        ).first()
+        if not existing:
+            session.add(tx)
+
+    session.flush()
+    print("  ✓ Sample transactions seeded")
+
+
 def main():
     """Run the QA seed process."""
     print(f"\n{'='*60}")
@@ -286,6 +381,9 @@ def main():
 
         print("Seeding test users...")
         seed_users(session)
+
+        print("Seeding sample transactions...")
+        seed_transactions(session)
 
         session.commit()
         print(f"\n{'='*60}")
