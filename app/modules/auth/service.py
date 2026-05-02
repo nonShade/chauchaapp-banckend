@@ -56,7 +56,7 @@ class AuthService:
             raise InvalidCredentialsException()
 
         access_token, _, expires_in = create_access_token(
-            str(user.user_id), user.email
+            str(user.user_id), user.email, user.first_name, user.last_name
         )
         refresh_token, _ = create_refresh_token(str(user.user_id))
 
