@@ -64,28 +64,33 @@ class TestCreateUser:
         assert result == user
 
 
-class TestGetIncomeTypeByName:
-    """Tests for income type lookup."""
+class TestGetIncomeTypeById:
+    """Tests for income type lookup by UUID."""
 
     def test_income_type_found(self, repository, mock_session):
         """When income type exists, return it."""
+        import uuid
+
+        income_type_id = uuid.uuid4()
         mock_it = MagicMock()
-        mock_it.name = "salaried"
+        mock_it.income_type_id = income_type_id
         mock_session.query.return_value.filter.return_value.first.return_value = (
             mock_it
         )
 
-        result = repository.get_income_type_by_name("salaried")
+        result = repository.get_income_type_by_id(income_type_id)
 
         assert result == mock_it
 
     def test_income_type_not_found(self, repository, mock_session):
         """When income type doesn't exist, return None."""
+        import uuid
+
         mock_session.query.return_value.filter.return_value.first.return_value = (
             None
         )
 
-        result = repository.get_income_type_by_name("nonexistent")
+        result = repository.get_income_type_by_id(uuid.uuid4())
 
         assert result is None
 
