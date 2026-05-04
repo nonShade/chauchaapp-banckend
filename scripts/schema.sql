@@ -510,47 +510,47 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Transaction Types
 INSERT INTO transaction_type (name, description) VALUES
-    ('income', 'Ingreso de dinero'),
-    ('expense', 'Gasto de dinero')
+    ('Ingreso', 'Ingreso de dinero'),
+    ('Gasto', 'Gasto de dinero')
 ON CONFLICT (name) DO NOTHING;
 
 -- Transaction Frequencies
 INSERT INTO transaction_frequency (name, description) VALUES
-    ('one_time', 'Transacción única, no recurrente'),
-    ('monthly', 'Se repite mensualmente'),
-    ('weekly', 'Se repite semanalmente')
+    ('Única', 'Transacción única, no recurrente'),
+    ('Mensual', 'Se repite mensualmente'),
+    ('Semanal', 'Se repite semanalmente')
 ON CONFLICT (name) DO NOTHING;
 
 -- Transaction Categories (Expenses)
 INSERT INTO transaction_category (name, description, transaction_type_id) VALUES
-    ('alimentacion', 'Gastos en comida y supermercado',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('transporte', 'Gastos en transporte público, combustible, etc.',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('salud', 'Gastos médicos, farmacia, seguros de salud',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('educacion', 'Gastos en educación, cursos, materiales',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('entretenimiento', 'Gastos en ocio, entretenimiento, suscripciones',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('vivienda', 'Arriendo, dividendo, mantención del hogar',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('servicios_basicos', 'Agua, luz, gas, internet, teléfono',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense')),
-    ('otros_gastos', 'Otros gastos no categorizados',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'expense'))
+    ('Alimentación', 'Gastos en comida y supermercado',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Transporte', 'Gastos en transporte público, combustible, etc.',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Salud', 'Gastos médicos, farmacia, seguros de salud',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Educación', 'Gastos en educación, cursos, materiales',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Entretenimiento', 'Gastos en ocio, entretenimiento, suscripciones',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Vivienda', 'Arriendo, dividendo, mantención del hogar',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Servicios Básicos', 'Agua, luz, gas, internet, teléfono',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto')),
+    ('Otros Gastos', 'Otros gastos no categorizados',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Gasto'))
 ON CONFLICT (name) DO NOTHING;
 
 -- Transaction Categories (Income)
 INSERT INTO transaction_category (name, description, transaction_type_id) VALUES
-    ('sueldo', 'Sueldo mensual de trabajo dependiente',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
-    ('freelance', 'Ingresos por trabajos independientes',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
-    ('inversiones', 'Retornos de inversiones',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income')),
-    ('otros_ingresos', 'Otros ingresos no categorizados',
-        (SELECT transaction_type_id FROM transaction_type WHERE name = 'income'))
+    ('Sueldo', 'Sueldo mensual de trabajo dependiente',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Ingreso')),
+    ('Freelance', 'Ingresos por trabajos independientes',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Ingreso')),
+    ('Inversiones', 'Retornos de inversiones',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Ingreso')),
+    ('Otros Ingresos', 'Otros ingresos no categorizados',
+        (SELECT transaction_type_id FROM transaction_type WHERE name = 'Ingreso'))
 ON CONFLICT (name) DO NOTHING;
 
 -- Notification Types
@@ -573,14 +573,14 @@ ON CONFLICT (name) DO NOTHING;
 
 -- Educational Topics
 INSERT INTO educational_topic (name, description) VALUES
-    ('ahorro', 'Estrategias y técnicas de ahorro personal'),
-    ('inversion', 'Conceptos de inversión y mercados financieros'),
-    ('presupuesto', 'Planificación y gestión de presupuesto personal'),
-    ('deudas', 'Manejo y estrategias para salir de deudas'),
-    ('impuestos', 'Educación tributaria y declaración de impuestos'),
-    ('seguros', 'Tipos de seguros y protección financiera'),
-    ('jubilacion', 'Planificación para la jubilación y AFP'),
-    ('emprendimiento', 'Finanzas para emprendedores')
+    ('Ahorro', 'Estrategias y técnicas de ahorro personal'),
+    ('Inversión', 'Conceptos de inversión y mercados financieros'),
+    ('Presupuesto', 'Planificación y gestión de presupuesto personal'),
+    ('Deudas', 'Manejo y estrategias para salir de deudas'),
+    ('Impuestos', 'Educación tributaria y declaración de impuestos'),
+    ('Seguros', 'Tipos de seguros y protección financiera'),
+    ('Jubilación', 'Planificación para la jubilación y AFP'),
+    ('Emprendimiento', 'Finanzas para emprendedores')
 ON CONFLICT (name) DO NOTHING;
 
 
