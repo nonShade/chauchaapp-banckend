@@ -39,6 +39,7 @@ result-*
 *.swp
 *.swo
 .antigravity/
+.claude/
 .docs/
 
 # ===== OS =====

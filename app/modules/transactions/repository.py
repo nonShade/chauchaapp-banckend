@@ -44,6 +44,50 @@ class TransactionsRepository:
         """Get all available transaction categories."""
         return self._session.query(TransactionCategory).all()
 
+    def get_transaction_type_by_name(self, name: str) -> TransactionType | None:
+        """Find a transaction type by its name."""
+        return (
+            self._session.query(TransactionType)
+            .filter(TransactionType.name == name)
+            .first()
+        )
+
+    def get_transaction_category_by_name(self, name: str) -> TransactionCategory | None:
+        """Find a transaction category by its name."""
+        return (
+            self._session.query(TransactionCategory)
+            .filter(TransactionCategory.name == name)
+            .first()
+        )
+
+    def get_transaction_frequency_by_name(self, name: str) -> TransactionFrequency | None:
+        """Find a transaction frequency by its name."""
+        return (
+            self._session.query(TransactionFrequency)
+            .filter(TransactionFrequency.name == name)
+            .first()
+        )
+
+    def get_transaction_by_user_type_category(
+        self, user_id: UUID, transaction_type_id: UUID, transaction_category_id: UUID
+    ) -> Transaction | None:
+        """Find a transaction for a user by type and category."""
+        return (
+            self._session.query(Transaction)
+            .filter(
+                Transaction.user_id == user_id,
+                Transaction.transaction_type_id == transaction_type_id,
+                Transaction.transaction_category_id == transaction_category_id,
+            )
+            .first()
+        )
+
+    def add_transaction(self, transaction: Transaction) -> Transaction:
+        """Add a transaction using flush instead of commit (for use within larger transactions)."""
+        self._session.add(transaction)
+        self._session.flush()
+        return transaction
+
     def create_transaction(self, transaction: Transaction) -> Transaction:
         """Create a new financial transaction."""
         self._session.add(transaction)
@@ -150,6 +194,102 @@ class TransactionsRepository:
             .group_by(TransactionCategory.transaction_category_id, TransactionCategory.name)
             .all()
         )
+
+    def get_all_user_transactions_eager(self, user_id: UUID) -> list[Transaction]:
+        """Get all transactions for a user with eager-loaded relationships.
+
+        This avoids N+1 queries when accessing transaction_type, category,
+        and transaction_frequency relationships.
+
+        Returns:
+            A list of Transaction entities with relationships populated.
+        """
+        from sqlalchemy.orm import joinedload
+
+        return (
+            self._session.query(Transaction)
+            .options(
+                joinedload(Transaction.transaction_type),
+                joinedload(Transaction.category),
+                joinedload(Transaction.transaction_frequency),
+            )
+            .filter(Transaction.user_id == user_id)
+            .all()
+        )
+
+    def get_transactions_by_user_in_range(
+        self,
+        user_id: UUID,
+        page: int = 1,
+        limit: int = 10,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> tuple[list[Transaction], int]:
+        """Get paginated transactions respecting transaction frequency.
+
+        One-time transactions (frequency = Única or NULL) are filtered by date range.
+        Recurring transactions (Mensual/Semanal) are included if they are active,
+        i.e. transaction_date <= end_date.
+
+        When both start_date and end_date are provided, recurring transactions that
+        started before the range but are still active are included.
+        """
+        from sqlalchemy import or_
+
+        query = self._session.query(Transaction).filter(
+            Transaction.user_id == user_id
+        )
+
+        if start_date and end_date:
+            freqs = {
+                f.name: f.transaction_frequency_id
+                for f in self._session.query(TransactionFrequency).all()
+            }
+            one_time_id = freqs.get("Única")
+            monthly_id = freqs.get("Mensual")
+            weekly_id = freqs.get("Semanal")
+            recurring_ids = [
+                rid for rid in [monthly_id, weekly_id] if rid is not None
+            ]
+
+            conditions = []
+
+            # One-time (or null frequency): within date range
+            ot_cond = (
+                (Transaction.transaction_date >= start_date)
+                & (Transaction.transaction_date <= end_date)
+            )
+            if one_time_id:
+                ot_cond = ot_cond & (
+                    (Transaction.transaction_frequency_id == one_time_id)
+                    | (Transaction.transaction_frequency_id.is_(None))
+                )
+            conditions.append(ot_cond)
+
+            # Recurring: active if transaction_date <= end_date
+            if recurring_ids:
+                conditions.append(
+                    (Transaction.transaction_frequency_id.in_(recurring_ids))
+                    & (Transaction.transaction_date <= end_date)
+                )
+
+            query = query.filter(or_(*conditions))
+        elif start_date:
+            query = query.filter(Transaction.transaction_date >= start_date)
+        elif end_date:
+            query = query.filter(Transaction.transaction_date <= end_date)
+
+        total_count = query.count()
+
+        offset = (page - 1) * limit
+        transactions = (
+            query.order_by(Transaction.transaction_date.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        return transactions, total_count
 
     def get_monthly_comparison(
         self, user_id: UUID, limit_months: int = 6

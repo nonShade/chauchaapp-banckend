@@ -24,6 +24,7 @@ from app.modules.transactions.dto import (
 from app.modules.transactions.repository import TransactionsRepository
 from app.modules.transactions.service import TransactionsService
 from app.modules.users.entities import User
+from app.modules.users.repository import UserRepository
 from app.shared.database import get_db
 from app.shared.security.auth_middleware import get_current_user
 
@@ -33,7 +34,8 @@ router = APIRouter(prefix="/v1/transactions", tags=["Transactions"])
 def _get_transactions_service(db: Session = Depends(get_db)) -> TransactionsService:
     """Dependency to build transactions service with its database repository."""
     repository = TransactionsRepository(db)
-    return TransactionsService(repository)
+    user_repo = UserRepository(db)
+    return TransactionsService(repository, user_repo)
 
 
 @router.get(

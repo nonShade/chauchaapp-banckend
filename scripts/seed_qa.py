@@ -265,89 +265,141 @@ def seed_users(session):
 
 
 def seed_transactions(session):
-    """Seed sample transactions for the main test user."""
+    """Seed sample transactions for all test users."""
 
-    # Get references
-    test_user = session.query(User).filter_by(email="test_login@chauchaapp.cl").first()
-    if not test_user:
-        return
-
+    # Get type/frequency references
     expense_type = session.query(TransactionType).filter_by(name="Gasto").first()
     income_type = session.query(TransactionType).filter_by(name="Ingreso").first()
     one_time = session.query(TransactionFrequency).filter_by(name="Única").first()
     monthly = session.query(TransactionFrequency).filter_by(name="Mensual").first()
+    weekly = session.query(TransactionFrequency).filter_by(name="Semanal").first()
 
-    # Get categories
+    # Get all transaction categories
     alimentacion = session.query(TransactionCategory).filter_by(name="Alimentación").first()
     transporte = session.query(TransactionCategory).filter_by(name="Transporte").first()
-    vivienda = session.query(TransactionCategory).filter_by(name="Vivienda").first()
     salud = session.query(TransactionCategory).filter_by(name="Salud").first()
-    sueldo = session.query(TransactionCategory).filter_by(name="Sueldo").first()
+    educacion = session.query(TransactionCategory).filter_by(name="Educación").first()
     entretenimiento = session.query(TransactionCategory).filter_by(name="Entretenimiento").first()
+    vivienda = session.query(TransactionCategory).filter_by(name="Vivienda").first()
+    servicios_basicos = session.query(TransactionCategory).filter_by(name="Servicios Básicos").first()
+    otros_gastos = session.query(TransactionCategory).filter_by(name="Otros Gastos").first()
+    sueldo = session.query(TransactionCategory).filter_by(name="Sueldo").first()
+    freelance = session.query(TransactionCategory).filter_by(name="Freelance").first()
+    inversiones = session.query(TransactionCategory).filter_by(name="Inversiones").first()
+    otros_ingresos = session.query(TransactionCategory).filter_by(name="Otros Ingresos").first()
 
-    sample_transactions = [
-        # Incomes
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("850000.00"),
-            transaction_type_id=income_type.transaction_type_id,
-            transaction_category_id=sueldo.transaction_category_id,
-            transaction_frequency_id=monthly.transaction_frequency_id,
-            description="Sueldo Abril",
-            transaction_date=date(2026, 4, 1),
-        ),
-        # Expenses
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("45000.00"),
-            transaction_type_id=expense_type.transaction_type_id,
-            transaction_category_id=alimentacion.transaction_category_id,
-            transaction_frequency_id=one_time.transaction_frequency_id,
-            description="Súper Líder",
-            transaction_date=date(2026, 4, 5),
-        ),
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("15000.00"),
-            transaction_type_id=expense_type.transaction_type_id,
-            transaction_category_id=transporte.transaction_category_id,
-            transaction_frequency_id=one_time.transaction_frequency_id,
-            description="Carga Bip",
-            transaction_date=date(2026, 4, 6),
-        ),
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("8500.00"),
-            transaction_type_id=expense_type.transaction_type_id,
-            transaction_category_id=entretenimiento.transaction_category_id,
-            transaction_frequency_id=monthly.transaction_frequency_id,
-            description="Netflix",
-            transaction_date=date(2026, 4, 10),
-        ),
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("120000.00"),
-            transaction_type_id=expense_type.transaction_type_id,
-            transaction_category_id=alimentacion.transaction_category_id,
-            transaction_frequency_id=one_time.transaction_frequency_id,
-            description="Cena Aniversario",
-            transaction_date=date(2026, 4, 15),
-        ),
-        Transaction(
-            user_id=test_user.user_id,
-            amount=Decimal("32000.00"),
-            transaction_type_id=expense_type.transaction_type_id,
-            transaction_category_id=salud.transaction_category_id,
-            transaction_frequency_id=one_time.transaction_frequency_id,
-            description="Farmacia Cruz Verde",
-            transaction_date=date(2026, 4, 20),
-        ),
-    ]
+    all_transactions = []
 
-    for tx in sample_transactions:
-        # Simple check to avoid duplicates on every run if based on description and date
+    def _add_tx(email, tx_type, category, frequency, amount, description, tx_date):
+        """Helper to build a Transaction and append to the list."""
+        user = session.query(User).filter_by(email=email).first()
+        if not user:
+            return
+        all_transactions.append(Transaction(
+            user_id=user.user_id,
+            amount=Decimal(str(amount)),
+            transaction_type_id=tx_type.transaction_type_id,
+            transaction_category_id=category.transaction_category_id,
+            transaction_frequency_id=frequency.transaction_frequency_id,
+            description=description,
+            transaction_date=tx_date,
+        ))
+
+    # =========================================
+    # test_login@chauchaapp.cl: 27 transactions
+    # =========================================
+
+    # Monthly recurring (start January, project across months)
+    _add_tx("test_login@chauchaapp.cl", income_type, sueldo, monthly, 850000, "Sueldo mensual", date(2026, 1, 1))
+    _add_tx("test_login@chauchaapp.cl", expense_type, vivienda, monthly, 350000, "Arriendo", date(2026, 1, 5))
+    _add_tx("test_login@chauchaapp.cl", expense_type, servicios_basicos, monthly, 42000, "Luz y Agua", date(2026, 1, 10))
+    _add_tx("test_login@chauchaapp.cl", expense_type, otros_gastos, monthly, 10000, "Seguro celular", date(2026, 1, 15))
+    _add_tx("test_login@chauchaapp.cl", expense_type, entretenimiento, monthly, 8500, "Netflix", date(2026, 1, 20))
+    _add_tx("test_login@chauchaapp.cl", expense_type, salud, monthly, 30000, "Seguro salud", date(2026, 1, 25))
+
+    # Weekly recurring (start May, active)
+    _add_tx("test_login@chauchaapp.cl", expense_type, alimentacion, weekly, 15000, "Supermercado semanal", date(2026, 5, 1))
+    _add_tx("test_login@chauchaapp.cl", expense_type, transporte, weekly, 5000, "Carga Bip semanal", date(2026, 5, 3))
+
+    # One-time expenses across multiple months
+    _add_tx("test_login@chauchaapp.cl", expense_type, alimentacion, one_time, 45000, "Súper Líder", date(2026, 4, 5))
+    _add_tx("test_login@chauchaapp.cl", expense_type, transporte, one_time, 15000, "Carga Bip", date(2026, 4, 6))
+    _add_tx("test_login@chauchaapp.cl", expense_type, salud, one_time, 32000, "Farmacia Cruz Verde", date(2026, 4, 20))
+    _add_tx("test_login@chauchaapp.cl", expense_type, educacion, one_time, 150000, "Curso Online", date(2026, 4, 22))
+    _add_tx("test_login@chauchaapp.cl", expense_type, entretenimiento, one_time, 25000, "Cine y cena", date(2026, 4, 25))
+    _add_tx("test_login@chauchaapp.cl", expense_type, otros_gastos, one_time, 60000, "Compra imprevista", date(2026, 4, 28))
+    _add_tx("test_login@chauchaapp.cl", expense_type, vivienda, one_time, 45000, "Mantención hogar", date(2026, 3, 15))
+    _add_tx("test_login@chauchaapp.cl", expense_type, transporte, one_time, 60000, "Tag autopista", date(2026, 3, 20))
+    _add_tx("test_login@chauchaapp.cl", expense_type, salud, one_time, 85000, "Dentista", date(2026, 2, 15))
+    _add_tx("test_login@chauchaapp.cl", expense_type, alimentacion, one_time, 55000, "Supermercado Mayo", date(2026, 5, 3))
+    _add_tx("test_login@chauchaapp.cl", expense_type, transporte, one_time, 15000, "Carga Bip Mayo", date(2026, 5, 7))
+    _add_tx("test_login@chauchaapp.cl", expense_type, salud, one_time, 150000, "Consulta Médica", date(2026, 4, 8))
+    _add_tx("test_login@chauchaapp.cl", expense_type, educacion, one_time, 200000, "Curso Desarrollo Web", date(2026, 4, 12))
+    _add_tx("test_login@chauchaapp.cl", expense_type, entretenimiento, one_time, 95000, "Cena Aniversario", date(2026, 4, 18))
+    _add_tx("test_login@chauchaapp.cl", expense_type, alimentacion, one_time, 70000, "Supermercado Extra Abril", date(2026, 4, 25))
+    _add_tx("test_login@chauchaapp.cl", expense_type, alimentacion, one_time, 120000, "Cumpleaños", date(2026, 5, 15))
+    _add_tx("test_login@chauchaapp.cl", expense_type, transporte, one_time, 35000, "Mantención auto", date(2026, 5, 20))
+
+    # One-time income
+    _add_tx("test_login@chauchaapp.cl", income_type, freelance, one_time, 200000, "Proyecto freelance", date(2026, 4, 15))
+    _add_tx("test_login@chauchaapp.cl", income_type, inversiones, one_time, 50000, "Dividendos", date(2026, 3, 1))
+
+    # =========================================
+    # Other QA users
+    # =========================================
+
+    # maria.gonzalez@test.cl - salaried, 1,500,000
+    _add_tx("maria.gonzalez@test.cl", income_type, sueldo, monthly, 1500000, "Sueldo mensual", date(2026, 1, 1))
+    _add_tx("maria.gonzalez@test.cl", expense_type, alimentacion, one_time, 85000, "Supermercado mensual", date(2026, 4, 3))
+    _add_tx("maria.gonzalez@test.cl", expense_type, salud, one_time, 45000, "Farmacia", date(2026, 4, 15))
+    _add_tx("maria.gonzalez@test.cl", expense_type, entretenimiento, one_time, 35000, "Salida familiar", date(2026, 5, 10))
+
+    # carlos.munoz@test.cl - independent, 2,000,000
+    _add_tx("carlos.munoz@test.cl", income_type, sueldo, monthly, 2000000, "Ingreso mensual", date(2026, 1, 1))
+    _add_tx("carlos.munoz@test.cl", expense_type, transporte, one_time, 120000, "Mantención vehículo", date(2026, 4, 8))
+    _add_tx("carlos.munoz@test.cl", expense_type, educacion, one_time, 80000, "Curso marketing", date(2026, 5, 5))
+    _add_tx("carlos.munoz@test.cl", expense_type, vivienda, one_time, 250000, "Reparación hogar", date(2026, 3, 20))
+
+    # valentina.rojas@test.cl - mixed, 1,800,000
+    _add_tx("valentina.rojas@test.cl", income_type, sueldo, monthly, 1800000, "Ingreso mensual", date(2026, 1, 1))
+    _add_tx("valentina.rojas@test.cl", expense_type, salud, one_time, 65000, "Consulta médica", date(2026, 4, 12))
+    _add_tx("valentina.rojas@test.cl", expense_type, entretenimiento, one_time, 55000, "Concierto", date(2026, 5, 8))
+    _add_tx("valentina.rojas@test.cl", expense_type, alimentacion, one_time, 95000, "Supermercado Quincena", date(2026, 4, 20))
+
+    # andres.silva@test.cl - salaried, 650,000
+    _add_tx("andres.silva@test.cl", income_type, sueldo, monthly, 650000, "Sueldo mensual", date(2026, 1, 1))
+    _add_tx("andres.silva@test.cl", expense_type, transporte, one_time, 25000, "Carga Bip", date(2026, 4, 10))
+    _add_tx("andres.silva@test.cl", expense_type, alimentacion, one_time, 35000, "Supermercado", date(2026, 5, 15))
+
+    # camila.torres@test.cl - other, 900,000
+    _add_tx("camila.torres@test.cl", income_type, sueldo, monthly, 900000, "Ingreso mensual", date(2026, 1, 1))
+    _add_tx("camila.torres@test.cl", expense_type, entretenimiento, one_time, 40000, "Streaming anual", date(2026, 4, 5))
+    _add_tx("camila.torres@test.cl", expense_type, alimentacion, one_time, 50000, "Supermercado", date(2026, 5, 2))
+    _add_tx("camila.torres@test.cl", expense_type, otros_gastos, one_time, 25000, "Suscripción revista", date(2026, 3, 10))
+
+    # diego.fernandez@test.cl - salaried, 2,500,000
+    _add_tx("diego.fernandez@test.cl", income_type, sueldo, monthly, 2500000, "Sueldo mensual", date(2026, 1, 1))
+    _add_tx("diego.fernandez@test.cl", expense_type, educacion, one_time, 350000, "Diplomado", date(2026, 4, 3))
+    _add_tx("diego.fernandez@test.cl", expense_type, salud, one_time, 95000, "Consulta especialista", date(2026, 5, 10))
+    _add_tx("diego.fernandez@test.cl", expense_type, vivienda, one_time, 180000, "Mantención hogar", date(2026, 3, 15))
+    _add_tx("diego.fernandez@test.cl", expense_type, transporte, one_time, 75000, "Tag autopista", date(2026, 4, 22))
+
+    # javiera.lopez@test.cl - independent, 1,100,000
+    _add_tx("javiera.lopez@test.cl", income_type, sueldo, monthly, 1100000, "Ingreso mensual", date(2026, 1, 1))
+    _add_tx("javiera.lopez@test.cl", expense_type, alimentacion, one_time, 65000, "Supermercado", date(2026, 4, 7))
+    _add_tx("javiera.lopez@test.cl", expense_type, entretenimiento, one_time, 30000, "Salida cultural", date(2026, 5, 12))
+
+    # felipe.martinez@test.cl - mixed, 3,000,000
+    _add_tx("felipe.martinez@test.cl", income_type, sueldo, monthly, 3000000, "Ingreso mensual", date(2026, 1, 1))
+    _add_tx("felipe.martinez@test.cl", expense_type, educacion, one_time, 500000, "MBA cuota", date(2026, 4, 1))
+    _add_tx("felipe.martinez@test.cl", expense_type, vivienda, one_time, 400000, "Dividendo extra", date(2026, 5, 5))
+    _add_tx("felipe.martinez@test.cl", expense_type, salud, one_time, 120000, "Seguro salud extra", date(2026, 3, 10))
+    _add_tx("felipe.martinez@test.cl", expense_type, alimentacion, one_time, 150000, "Supermercado familiar", date(2026, 4, 20))
+
+    # Deduplicate and insert
+    for tx in all_transactions:
         existing = session.query(Transaction).filter_by(
-            user_id=test_user.user_id,
+            user_id=tx.user_id,
             description=tx.description,
             transaction_date=tx.transaction_date
         ).first()
@@ -355,7 +407,7 @@ def seed_transactions(session):
             session.add(tx)
 
     session.flush()
-    print("  ✓ Sample transactions seeded")
+    print(f"  ✓ Sample transactions seeded ({len(all_transactions)} transactions)")
 
 
 def main():

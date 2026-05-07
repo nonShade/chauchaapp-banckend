@@ -6,7 +6,7 @@ Delegates data access to the repository layer.
 Must be independent of web framework (per backend development rules).
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from app.modules.auth.dto import (
     LoginRequestDTO,
@@ -23,6 +23,8 @@ from app.modules.auth.exceptions import (
     InvalidIncomeTypeException,
 )
 from app.modules.auth.repository import AuthRepository
+from app.modules.transactions.entities import Transaction
+from app.modules.transactions.repository import TransactionsRepository
 from app.modules.users.entities import User
 from app.shared.security.jwt_handler import (
     create_access_token,
@@ -36,8 +38,9 @@ from app.shared.security.token_blacklist import token_blacklist
 class AuthService:
     """Business logic for authentication operations."""
 
-    def __init__(self, repository: AuthRepository):
+    def __init__(self, repository: AuthRepository, transactions_repository: TransactionsRepository):
         self._repository = repository
+        self._transactions_repository = transactions_repository
 
     def login(self, dto: LoginRequestDTO) -> LoginResponseDTO:
         """Authenticate a user and generate JWT tokens.
@@ -120,6 +123,39 @@ class AuthService:
             self._repository.create_user_interests(
                 created_user.user_id, tag_ids
             )
+
+        # Create default transactions (income: Sueldo, expense: Otros Gastos)
+        today = date.today()
+
+        income_type = self._transactions_repository.get_transaction_type_by_name("Ingreso")
+        expense_type = self._transactions_repository.get_transaction_type_by_name("Gasto")
+        sueldo_category = self._transactions_repository.get_transaction_category_by_name("Sueldo")
+        otros_gastos_category = self._transactions_repository.get_transaction_category_by_name("Otros Gastos")
+        monthly_frequency = self._transactions_repository.get_transaction_frequency_by_name("Mensual")
+
+        # Income transaction (Sueldo)
+        income_tx = Transaction(
+            user_id=created_user.user_id,
+            amount=dto.monthly_income,
+            transaction_type_id=income_type.transaction_type_id,
+            transaction_category_id=sueldo_category.transaction_category_id,
+            transaction_frequency_id=monthly_frequency.transaction_frequency_id,
+            description=None,
+            transaction_date=today,
+        )
+        self._transactions_repository.add_transaction(income_tx)
+
+        # Expense transaction (Otros Gastos)
+        expense_tx = Transaction(
+            user_id=created_user.user_id,
+            amount=dto.monthly_expenses,
+            transaction_type_id=expense_type.transaction_type_id,
+            transaction_category_id=otros_gastos_category.transaction_category_id,
+            transaction_frequency_id=monthly_frequency.transaction_frequency_id,
+            description="Gasto estimado del usuario",
+            transaction_date=today,
+        )
+        self._transactions_repository.add_transaction(expense_tx)
 
         return RegisterResponseDTO(
             message="Usuario creado correctamente",

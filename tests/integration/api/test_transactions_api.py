@@ -130,13 +130,28 @@ def test_get_financial_summary_api(client: TestClient, mock_db: MagicMock):
     mock_user.user_id = user_id
     app.dependency_overrides[get_current_user] = lambda: mock_user
 
-    mock_db.query.return_value.join.return_value.filter.return_value.filter.return_value.filter.return_value.group_by.return_value.all.return_value = [
-        ("ingreso", 1000),
-        ("gasto", 400)
+    # Build mock transactions with proper relationships
+    income_tx = MagicMock()
+    income_tx.amount = 1000
+    income_tx.transaction_date = date.today()
+    income_tx.transaction_type = MagicMock()
+    income_tx.transaction_type.name = "ingreso"
+    income_tx.transaction_frequency = None
+
+    expense_tx = MagicMock()
+    expense_tx.amount = 400
+    expense_tx.transaction_date = date.today()
+    expense_tx.transaction_type = MagicMock()
+    expense_tx.transaction_type.name = "gasto"
+    expense_tx.transaction_frequency = None
+
+    # Mock the eager-load query path
+    mock_db.query.return_value.options.return_value.filter.return_value.all.return_value = [
+        income_tx, expense_tx
     ]
 
     response = client.get("/v1/transactions/summary")
-    
+
     assert response.status_code == 200
     data = response.json()
     assert str(data["total_income"]) == "1000"

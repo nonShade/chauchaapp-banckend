@@ -27,6 +27,7 @@ from app.modules.auth.exceptions import (
 )
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
+from app.modules.transactions.repository import TransactionsRepository
 from app.shared.database import get_db
 from app.shared.exceptions import ValidationException
 
@@ -37,7 +38,8 @@ security = HTTPBearer()
 def _get_auth_service(db: Session = Depends(get_db)) -> AuthService:
     """FastAPI dependency that builds the auth service with its repository."""
     repository = AuthRepository(db)
-    return AuthService(repository)
+    tx_repo = TransactionsRepository(db)
+    return AuthService(repository, tx_repo)
 
 
 @router.post(

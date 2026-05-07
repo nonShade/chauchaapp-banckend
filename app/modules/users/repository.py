@@ -129,3 +129,16 @@ class UserRepository:
         """
         self._session.flush()
         return user
+
+    def update_user_with_commit(self, user: User) -> User:
+        """Persist changes to an existing user entity and commit.
+
+        Args:
+            user: The modified User entity already tracked by the session.
+
+        Returns:
+            The updated User entity.
+        """
+        self._session.flush()
+        self._session.commit()
+        return user

@@ -36,9 +36,15 @@ def mock_repository():
 
 
 @pytest.fixture
-def service(mock_repository):
-    """Provide an AuthService with mocked repository."""
-    return AuthService(mock_repository)
+def mock_tx_repository():
+    """Provide a fully mocked TransactionsRepository."""
+    return MagicMock()
+
+
+@pytest.fixture
+def service(mock_repository, mock_tx_repository):
+    """Provide an AuthService with mocked repositories."""
+    return AuthService(mock_repository, mock_tx_repository)
 
 
 @pytest.fixture
@@ -140,8 +146,23 @@ class TestRegister:
         it.name = "salaried"
         return it
 
+    @pytest.fixture
+    def mock_tx_setup(self, mock_tx_repository):
+        """Set up mock transaction repository responses for registration flow."""
+        mock_type = MagicMock()
+        mock_type.transaction_type_id = uuid.uuid4()
+        mock_category = MagicMock()
+        mock_category.transaction_category_id = uuid.uuid4()
+        mock_frequency = MagicMock()
+        mock_frequency.transaction_frequency_id = uuid.uuid4()
+
+        mock_tx_repository.get_transaction_type_by_name.return_value = mock_type
+        mock_tx_repository.get_transaction_category_by_name.return_value = mock_category
+        mock_tx_repository.get_transaction_frequency_by_name.return_value = mock_frequency
+        return mock_tx_repository
+
     def test_register_success(
-        self, service, mock_repository, register_dto, mock_income_type
+        self, service, mock_repository, register_dto, mock_income_type, mock_tx_setup
     ):
         """CP-005: Successful registration returns user confirmation."""
         mock_repository.get_user_by_email.return_value = None
@@ -168,7 +189,7 @@ class TestRegister:
         mock_repository.create_user_interests.assert_called_once()
 
     def test_register_hashes_password(
-        self, service, mock_repository, register_dto, mock_income_type
+        self, service, mock_repository, register_dto, mock_income_type, mock_tx_setup
     ):
         """Password must be hashed before storing."""
         mock_repository.get_user_by_email.return_value = None

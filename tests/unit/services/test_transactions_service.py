@@ -23,6 +23,7 @@ from app.modules.transactions.dto import (
     TransactionUpdateDTO,
 )
 from app.shared.exceptions import ForbiddenException, NotFoundException
+from app.modules.users.repository import UserRepository
 
 
 @pytest.fixture
@@ -31,8 +32,50 @@ def mock_repository():
 
 
 @pytest.fixture
-def service(mock_repository):
-    return TransactionsService(repository=mock_repository)
+def mock_user_repository():
+    return MagicMock(spec=UserRepository)
+
+
+@pytest.fixture
+def service(mock_repository, mock_user_repository):
+    return TransactionsService(
+        repository=mock_repository, user_repository=mock_user_repository
+    )
+
+
+def _make_transaction_mock(
+    amount: Decimal,
+    type_name: str,
+    tx_date: date,
+    freq_name: str | None = None,
+    category_name: str | None = None,
+    category_id: uuid.UUID | None = None,
+) -> MagicMock:
+    """Helper to build a mock Transaction with set up relationships."""
+    tx = MagicMock(spec=Transaction)
+    tx.amount = amount
+    tx.transaction_date = tx_date
+
+    tx.transaction_type = MagicMock()
+    tx.transaction_type.name = type_name
+
+    if freq_name:
+        tx.transaction_frequency = MagicMock()
+        tx.transaction_frequency.name = freq_name
+    else:
+        tx.transaction_frequency = None
+
+    if category_name or category_id:
+        tx.category = MagicMock()
+        tx.category.name = category_name or "Test Category"
+    else:
+        tx.category = None
+
+    tx.transaction_category_id = category_id
+    tx.transaction_type_id = uuid.uuid4()
+    tx.transaction_id = uuid.uuid4()
+
+    return tx
 
 
 def test_get_transaction_types(service, mock_repository):
@@ -125,11 +168,11 @@ def test_update_transaction_success(service, mock_repository):
     user_id = uuid.uuid4()
     tx_id = uuid.uuid4()
     existing_tx = Transaction(
-        transaction_id=tx_id, user_id=user_id, amount=Decimal("1000"), 
+        transaction_id=tx_id, user_id=user_id, amount=Decimal("1000"),
         transaction_date=date(2026, 1, 1), transaction_type_id=uuid.uuid4()
     )
     mock_repository.get_transaction_by_id.return_value = existing_tx
-    
+
     data = TransactionUpdateDTO(amount=Decimal("2000"))
     mock_repository.update_transaction.return_value = Transaction(
         transaction_id=tx_id, user_id=user_id, amount=Decimal("2000"),
@@ -186,7 +229,7 @@ def test_get_user_transactions(service, mock_repository):
         transaction_date=date(2026, 1, 1),
         transaction_type_id=uuid.uuid4()
     )
-    mock_repository.get_transactions_by_user.return_value = ([tx], 1)
+    mock_repository.get_transactions_by_user_in_range.return_value = ([tx], 1)
 
     # Act
     result = service.get_user_transactions(user_id, page=1, limit=10)
@@ -200,9 +243,19 @@ def test_get_user_transactions(service, mock_repository):
 def test_get_financial_summary(service, mock_repository):
     # Arrange
     user_id = uuid.uuid4()
-    mock_repository.get_totals_by_type.return_value = [
-        ("ingreso", Decimal("1000")),
-        ("gasto", Decimal("400"))
+
+    income_tx = _make_transaction_mock(
+        amount=Decimal("1000"),
+        type_name="ingreso",
+        tx_date=date(2026, 5, 1),
+    )
+    expense_tx = _make_transaction_mock(
+        amount=Decimal("400"),
+        type_name="gasto",
+        tx_date=date(2026, 5, 1),
+    )
+    mock_repository.get_all_user_transactions_eager.return_value = [
+        income_tx, expense_tx
     ]
 
     # Act
@@ -214,13 +267,45 @@ def test_get_financial_summary(service, mock_repository):
     assert result.total_balance == Decimal("600")
 
 
+def test_get_financial_summary_with_monthly_frequency(service, mock_repository):
+    """A monthly transaction started in April should contribute to May's summary."""
+    # Arrange
+    user_id = uuid.uuid4()
+
+    monthly_tx = _make_transaction_mock(
+        amount=Decimal("1000"),
+        type_name="ingreso",
+        tx_date=date(2026, 4, 1),
+        freq_name="Mensual",
+    )
+    mock_repository.get_all_user_transactions_eager.return_value = [monthly_tx]
+
+    # Act — query for May 2026
+    result = service.get_financial_summary(
+        user_id,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 31),
+    )
+
+    # Assert — monthly salary started in April, but contributes 1000 to May
+    assert result.total_income == Decimal("1000")
+    assert result.total_expenses == Decimal("0")
+    assert result.total_balance == Decimal("1000")
+
+
 def test_get_expense_distribution(service, mock_repository):
     # Arrange
     user_id = uuid.uuid4()
     cat_id = uuid.uuid4()
-    mock_repository.get_distribution_by_category.return_value = [
-        (cat_id, "Comida", Decimal("100"))
-    ]
+
+    expense_tx = _make_transaction_mock(
+        amount=Decimal("100"),
+        type_name="gasto",
+        tx_date=date(2026, 5, 1),
+        category_name="Comida",
+        category_id=cat_id,
+    )
+    mock_repository.get_all_user_transactions_eager.return_value = [expense_tx]
 
     # Act
     result = service.get_expense_distribution(user_id)
@@ -234,16 +319,51 @@ def test_get_expense_distribution(service, mock_repository):
 def test_get_income_vs_expenses(service, mock_repository):
     # Arrange
     user_id = uuid.uuid4()
-    mock_repository.get_monthly_comparison.return_value = [
-        ("2026-03", "ingreso", Decimal("100")),
-        ("2026-03", "gasto", Decimal("50"))
+
+    income_tx = _make_transaction_mock(
+        amount=Decimal("100"),
+        type_name="ingreso",
+        tx_date=date(2026, 3, 1),
+    )
+    expense_tx = _make_transaction_mock(
+        amount=Decimal("50"),
+        type_name="gasto",
+        tx_date=date(2026, 3, 15),
+    )
+    mock_repository.get_all_user_transactions_eager.return_value = [
+        income_tx, expense_tx
     ]
 
     # Act
     result = service.get_income_vs_expenses(user_id)
 
-    # Assert
-    assert len(result) == 1
-    assert result[0].month == "2026-03"
-    assert result[0].income == Decimal("100")
-    assert result[0].expenses == Decimal("50")
+    # Assert — at least one month with data, check March
+    assert any(
+        r.month == "2026-03" and r.income == Decimal("100") and r.expenses == Decimal("50")
+        for r in result
+    )
+
+
+def test_get_income_vs_expenses_with_monthly_recurring(service, mock_repository):
+    """A monthly transaction started in January should appear in March's data."""
+    # Arrange
+    user_id = uuid.uuid4()
+
+    monthly_tx = _make_transaction_mock(
+        amount=Decimal("1000"),
+        type_name="ingreso",
+        tx_date=date(2026, 1, 1),
+        freq_name="Mensual",
+    )
+    mock_repository.get_all_user_transactions_eager.return_value = [monthly_tx]
+
+    # Act
+    result = service.get_income_vs_expenses(user_id)
+
+    # Assert — monthly income should appear in all months from Jan onward
+    # Find March in results (assuming March is within the last 6 months)
+    march_entry = next((r for r in result if r.month == "2026-03"), None)
+    assert march_entry is not None, "March should be in the results"
+    assert march_entry.income == Decimal("1000"), (
+        f"Expected 1000 income in March, got {march_entry.income}"
+    )

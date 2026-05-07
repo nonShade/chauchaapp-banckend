@@ -6,8 +6,11 @@ Delegates data access to the repository layer.
 Must be independent of web framework (per backend development rules).
 """
 
+from datetime import date
 import uuid
 
+from app.modules.transactions.entities import Transaction
+from app.modules.transactions.repository import TransactionsRepository
 from app.modules.users.dto import UpdateProfileRequestDTO, UserProfileResponseDTO
 from app.modules.users.exceptions import (
     EmailAlreadyInUseException,
@@ -21,8 +24,9 @@ from app.modules.users.repository import UserRepository
 class UserProfileService:
     """Business logic for user profile operations."""
 
-    def __init__(self, repository: UserRepository):
+    def __init__(self, repository: UserRepository, transactions_repository: TransactionsRepository):
         self._repository = repository
+        self._tx_repo = transactions_repository
 
     def get_profile(self, user_id: uuid.UUID) -> UserProfileResponseDTO:
         """Retrieve the full profile of a user by their ID.
@@ -115,5 +119,29 @@ class UserProfileService:
         self._repository.delete_user_interests(user_id)
         if dto.topics:
             self._repository.create_user_interests(user_id, dto.topics)
+
+        # Sync the Sueldo income transaction with the new monthly_income
+        income_type = self._tx_repo.get_transaction_type_by_name("Ingreso")
+        sueldo_category = self._tx_repo.get_transaction_category_by_name("Sueldo")
+        if income_type and sueldo_category:
+            existing_tx = self._tx_repo.get_transaction_by_user_type_category(
+                user_id,
+                income_type.transaction_type_id,
+                sueldo_category.transaction_category_id,
+            )
+            if existing_tx:
+                existing_tx.amount = dto.monthly_income
+            else:
+                monthly_frequency = self._tx_repo.get_transaction_frequency_by_name("Mensual")
+                new_tx = Transaction(
+                    user_id=user_id,
+                    amount=dto.monthly_income,
+                    transaction_type_id=income_type.transaction_type_id,
+                    transaction_category_id=sueldo_category.transaction_category_id,
+                    transaction_frequency_id=monthly_frequency.transaction_frequency_id,
+                    description=None,
+                    transaction_date=date.today(),
+                )
+                self._tx_repo.add_transaction(new_tx)
 
         return self.get_profile(user_id)

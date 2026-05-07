@@ -202,6 +202,15 @@ class TestUpdateProfileEndpoint:
         mock_db.query.return_value.filter.return_value.all.return_value = []
 
         # Patch the repository methods to return valid entities
+        income_type_mock = MagicMock()
+        income_type_mock.transaction_type_id = uuid.uuid4()
+
+        sueldo_category_mock = MagicMock()
+        sueldo_category_mock.transaction_category_id = uuid.uuid4()
+
+        existing_tx_mock = MagicMock()
+        existing_tx_mock.amount = Decimal("500000")
+
         with patch(
             "app.modules.users.repository.UserRepository.get_user_by_id",
             return_value=sample_user,
@@ -224,6 +233,15 @@ class TestUpdateProfileEndpoint:
         ), patch(
             "app.modules.users.repository.UserRepository.update_user",
             return_value=sample_user,
+        ), patch(
+            "app.modules.transactions.repository.TransactionsRepository.get_transaction_type_by_name",
+            return_value=income_type_mock,
+        ), patch(
+            "app.modules.transactions.repository.TransactionsRepository.get_transaction_category_by_name",
+            return_value=sueldo_category_mock,
+        ), patch(
+            "app.modules.transactions.repository.TransactionsRepository.get_transaction_by_user_type_category",
+            return_value=existing_tx_mock,
         ):
             response = client.put(
                 "/v1/users/profile",

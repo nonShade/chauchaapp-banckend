@@ -20,6 +20,7 @@ from app.modules.users.exceptions import (
     InvalidTopicException,
     UserNotFoundException,
 )
+from app.modules.transactions.repository import TransactionsRepository
 from app.modules.users.entities import User
 from app.modules.users.repository import UserRepository
 from app.modules.users.service import UserProfileService
@@ -32,7 +33,8 @@ router = APIRouter(prefix="/v1/users", tags=["Users"])
 def _get_user_service(db: Session = Depends(get_db)) -> UserProfileService:
     """FastAPI dependency that builds the user profile service with its repository."""
     repository = UserRepository(db)
-    return UserProfileService(repository)
+    tx_repo = TransactionsRepository(db)
+    return UserProfileService(repository, tx_repo)
 
 
 @router.get(

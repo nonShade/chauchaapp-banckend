@@ -36,9 +36,31 @@ def mock_repository():
 
 
 @pytest.fixture
-def service(mock_repository):
-    """Provide a UserProfileService with mocked repository."""
-    return UserProfileService(mock_repository)
+def mock_tx_repository():
+    """Provide a fully mocked TransactionsRepository."""
+    return MagicMock()
+
+
+@pytest.fixture
+def service(mock_repository, mock_tx_repository):
+    """Provide a UserProfileService with mocked repositories."""
+    return UserProfileService(mock_repository, mock_tx_repository)
+
+
+@pytest.fixture
+def mock_tx_setup(mock_tx_repository):
+    """Set up mock transaction repository responses for profile update flow."""
+    mock_type = MagicMock()
+    mock_type.transaction_type_id = uuid.uuid4()
+    mock_category = MagicMock()
+    mock_category.transaction_category_id = uuid.uuid4()
+    mock_tx = MagicMock()
+    mock_tx.amount = Decimal("500000")
+
+    mock_tx_repository.get_transaction_type_by_name.return_value = mock_type
+    mock_tx_repository.get_transaction_category_by_name.return_value = mock_category
+    mock_tx_repository.get_transaction_by_user_type_category.return_value = mock_tx
+    return mock_tx_repository
 
 
 @pytest.fixture
@@ -176,6 +198,7 @@ class TestUpdateProfileEmail:
         self,
         service,
         mock_repository,
+        mock_tx_setup,
         user_id,
         sample_user,
         sample_income_type,
@@ -282,6 +305,7 @@ class TestUpdateProfileTopics:
         self,
         service,
         mock_repository,
+        mock_tx_setup,
         user_id,
         sample_user,
         sample_income_type,
@@ -306,6 +330,7 @@ class TestUpdateProfileTopics:
         self,
         service,
         mock_repository,
+        mock_tx_setup,
         user_id,
         sample_user,
         sample_income_type,
