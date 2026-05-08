@@ -80,7 +80,7 @@ def get_news_topics(service: NewsService = Depends(_get_news_service)):
     response_model=NewsFullAnalysisResponseDTO,
     summary="Analizar noticias RSS con perfil financiero y guardar en DB",
     description="""
-    **TODO EN UN SOLO ENDPOINT** — Hace exactamente esto:
+    Realiza lo siguiente:
     
     1. Obtiene las últimas noticias desde endpoint interno /v1/news/latest_news
     2. Si insuficientes matches con categorías del usuario, busca en dominios .cl
@@ -96,7 +96,6 @@ def get_news_topics(service: NewsService = Depends(_get_news_service)):
        - Análisis personalizado vinculado al usuario
     7. Retorna las noticias analizadas
     
-    **Jamás inventa datos**: Si un número no está en la búsqueda web, no lo incluye.
     """,
     responses={
         401: {"description": "No autorizado - se requiere JWT"},
@@ -128,7 +127,6 @@ async def analyze_full(
     try:
         from sqlalchemy.orm import joinedload
         
-        # Validar y cargar usuario con TODAS sus relaciones
         user = db.query(User).options(
             joinedload(User.income_type_rel),
             joinedload(User.user_interests)
@@ -142,52 +140,40 @@ async def analyze_full(
         # Construir perfil completo
         user_profile = _build_user_profile(user)
 
-        # Importar agente
         from app.agent.news_agent import news_analysis_agent
 
-        # PASO 1: Obtener noticias del ENDPOINT INTERNO (OBLIGATORIO)
-        logger.info("📰 Obteniendo noticias del endpoint interno...")
         all_news_from_endpoint = await news_analysis_agent.get_latest_news_from_endpoint(limit=15)
         
         if not all_news_from_endpoint:
-            logger.warning("⚠️ Endpoint no retornó noticias, intentando búsqueda chilena...")
             all_news_from_endpoint = []
 
-        # PASO 2: Priorizar por categorías del usuario
         user_categories = user_profile.get("topics", [])
         prioritized_news = news_analysis_agent._select_and_prioritize_news(
             all_news=all_news_from_endpoint,
             user_categories=user_categories,
-            target_count=15  # Pedimos 15 para seleccionar después
+            target_count=15
         )
         
-        # Contar matches reales con categorías del usuario
         matched_count = 0
         for news in prioritized_news:
             cat = news_analysis_agent._categorize_news(news)
             if cat in user_categories or any(uc in cat or cat in uc for uc in user_categories):
                 matched_count += 1
         
-        logger.info(f"📊 {matched_count} noticias matched con categorías del usuario (threshold: {threshold_for_search})")
-        
-        # PASO 3: Si insuficientes matches, buscar noticias chilenas
         chilean_news = []
         if matched_count < threshold_for_search:
-            logger.info(f"🇨🇱 Disparando búsqueda de noticias chilenas ({threshold_for_search - matched_count} faltantes)...")
             search_keywords = " ".join(user_categories[:3]) if user_categories else ""
             chilean_news = await news_analysis_agent.search_chilean_news(
                 user_categories=user_categories,
                 keywords=search_keywords
             )
             if chilean_news:
-                logger.info(f"✅ Encontradas {len(chilean_news)} noticias chilenas")
+                logger.info(f"Encontradas {len(chilean_news)} noticias chilenas")
             else:
-                logger.warning("⚠️ No se encontraron noticias chilenas")
+                logger.warning("No se encontraron noticias chilenas")
         
-        # PASO 4: Combinar noticias (RSS prioritarias, luego chilenas)
         combined_news = prioritized_news + chilean_news
         
-        # PASO 5: Seleccionar y priorizar final (máximo 10)
         final_news = news_analysis_agent._select_and_prioritize_news(
             all_news=combined_news,
             user_categories=user_categories,
@@ -195,7 +181,6 @@ async def analyze_full(
         )
         
         if not final_news:
-            logger.warning("⚠️ Sin noticias para analizar después de todo el flujo")
             return {
                 "success": True,
                 "message": "No hay noticias para analizar",
@@ -212,16 +197,12 @@ async def analyze_full(
                 }
             }
 
-        # PASO 6: Analizar + Guardar en DB
-        logger.info(f"🤖 Analizando {len(final_news)} noticias con IA...")
         analyses = await news_analysis_agent.analyze_and_save_news(
             news_items=final_news,
             user_profile=user_profile,
             db_session=db,
         )
 
-        logger.info(f"✅ Análisis completado: {len(analyses)} noticias procesadas")
-        
         return {
             "success": True,
             "analyzed_count": len(analyses),
@@ -238,13 +219,13 @@ async def analyze_full(
         }
 
     except ValueError as e:
-        logger.error(f"❌ ValueError: {str(e)}")
+        logger.error(f"ValueError: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"❌ Error en análisis completo: {str(e)}")
+        logger.error(f"Error en análisis completo: {str(e)}")
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -291,7 +272,6 @@ async def get_all_analyzed(
         # Importar agente
         from app.agent.news_agent import news_analysis_agent
 
-        # Obtener TODO lo ya analizado
         analyzed = await news_analysis_agent.get_all_analyzed_news(
             user_id=str(user.user_id),
             db_session=db,
@@ -310,7 +290,6 @@ async def get_all_analyzed(
         )
 
 
-# Endpoint mantenido por compatibilidad (sin autenticación requerida)
 @router.get(
     "/latest_news",
     summary="Obtener últimas noticias (RSS)",

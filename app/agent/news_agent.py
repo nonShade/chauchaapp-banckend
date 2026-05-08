@@ -69,8 +69,8 @@ class NewsAnalysisAgentOptimized:
         Args:
             max_parallel_analyses: Número máximo de análisis paralelos (default: 3)
         """
-        self.agent = self._create_agent()
         self.session_id = "news_analysis_session_optimized"
+        self.agent = self._create_agent()
         self.analysis_semaphore = asyncio.Semaphore(max_parallel_analyses)
         self._analysis_cache = {}  # Hash(url+user_id) → resultado análisis
         self._timing_stats = {}
@@ -139,7 +139,6 @@ class NewsAnalysisAgentOptimized:
             instructions=instructions,
             description="Analiza noticias RSS con perfil financiero (OPTIMIZADO)",
             session_id=self.session_id,
-            kwargs={"temperature": 0.2, "top_p": 0.8},
             markdown=True,
         )
         return agent
