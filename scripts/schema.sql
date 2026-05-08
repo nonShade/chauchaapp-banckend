@@ -409,6 +409,29 @@ CREATE INDEX IF NOT EXISTS idx_notification_reference
 
 
 -- ============================================================
+-- DAILY TIPS MODULE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS daily_tip (
+    daily_tip_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title VARCHAR(255) NOT NULL,
+    text TEXT NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    day_of_week INT NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID,
+    updated_by UUID
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_tip_active ON daily_tip(is_active);
+CREATE INDEX IF NOT EXISTS idx_daily_tip_day_of_week ON daily_tip(day_of_week);
+CREATE INDEX IF NOT EXISTS idx_daily_tip_generated_at ON daily_tip(generated_at);
+
+
+-- ============================================================
 -- APPLY updated_at TRIGGERS TO ALL TABLES
 -- ============================================================
 
@@ -444,7 +467,8 @@ BEGIN
             'question',
             'answer_option',
             'quiz_result',
-            'notification'
+            'notification',
+            'daily_tip'
         ])
     LOOP
         EXECUTE format(

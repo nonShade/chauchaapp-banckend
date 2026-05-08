@@ -5,6 +5,12 @@ FastAPI application with authentication endpoints,
 CORS middleware, and global exception handlers.
 """
 
+from app.shared.exceptions import AppException
+from app.modules.users.controller import router as users_router
+from app.modules.daily_tips.controller import router as daily_tips_router
+from app.modules.transactions.controller import router as transactions_router
+from app.modules.news.controller import router as news_router
+from app.modules.auth.controller import router as auth_router
 import os
 
 from dotenv import load_dotenv
@@ -14,11 +20,6 @@ from fastapi.responses import JSONResponse
 
 load_dotenv()
 
-from app.modules.auth.controller import router as auth_router
-from app.modules.news.controller import router as news_router
-from app.modules.transactions.controller import router as transactions_router
-from app.modules.users.controller import router as users_router
-from app.shared.exceptions import AppException
 
 app = FastAPI(
     title="ChauchaApp API",
@@ -49,6 +50,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(transactions_router)
 app.include_router(news_router)
+app.include_router(daily_tips_router)
 app.include_router(users_router)
 
 
