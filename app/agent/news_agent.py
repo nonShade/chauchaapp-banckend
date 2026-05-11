@@ -420,22 +420,32 @@ class NewsAnalysisAgentOptimized:
 
         start = time.perf_counter()
         tag_maps_bulk = []
+        seen_pairs = set()  # Track (news_id, tag_id) pairs
+
         for url_truncada, info in news_db_map.items():
-            if url_truncada in news_url_to_id:
-                news_id = news_url_to_id[url_truncada]
-                for tag_name in info.get("tags", []):
-                    tag_map = db_session.query(NewsTag.tag_id).filter(NewsTag.name == tag_name).first()
-                    if tag_map:
+            if url_truncada not in news_url_to_id:
+                continue
+            
+            news_id = news_url_to_id[url_truncada]
+            
+            for tag_name in info.get("tags", []):
+                tag_map = db_session.query(NewsTag.tag_id).filter(NewsTag.name == tag_name).first()
+                if tag_map:
+                    tag_id = tag_map[0]
+                    pair = (news_id, tag_id)
+                    
+                    # Skip if pair already seen this batch
+                    if pair not in seen_pairs:
+                        seen_pairs.add(pair)
                         tag_maps_bulk.append({
                             "news_id": news_id,
-                            "tag_id": tag_map[0]
+                            "tag_id": tag_id
                         })
 
         if tag_maps_bulk:
-            unique_maps = list({(m["news_id"], m["tag_id"]): m for m in tag_maps_bulk}.values())
             db_session.execute(
                 NewsTagMap.__table__.insert(),
-                unique_maps
+                tag_maps_bulk
             )
             db_session.flush()
 
