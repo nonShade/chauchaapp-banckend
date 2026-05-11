@@ -395,6 +395,11 @@ class NewsAnalysisAgentOptimized:
         start = time.perf_counter()
         all_news = db_session.query(News.news_id, News.source_url).all()
         news_url_to_id = {url: nid for nid, url in all_news}
+        
+        # Also fetch existing tag_maps to avoid duplicates
+        existing_tag_maps = db_session.query(NewsTagMap.news_id, NewsTagMap.tag_id).all()
+        existing_pairs_in_db = {(nm[0], nm[1]) for nm in existing_tag_maps}
+        
         elapsed = time.perf_counter() - start
         self._track_timing("fetch_news_ids", elapsed)
 
@@ -434,8 +439,8 @@ class NewsAnalysisAgentOptimized:
                     tag_id = tag_map[0]
                     pair = (news_id, tag_id)
                     
-                    # Skip if pair already seen this batch
-                    if pair not in seen_pairs:
+                    # Skip if pair already seen this batch OR already exists in DB
+                    if pair not in seen_pairs and pair not in existing_pairs_in_db:
                         seen_pairs.add(pair)
                         tag_maps_bulk.append({
                             "news_id": news_id,
@@ -448,6 +453,7 @@ class NewsAnalysisAgentOptimized:
                 tag_maps_bulk
             )
             db_session.flush()
+            logger.info(f"    {len(tag_maps_bulk)} tag_maps insertados")
 
         elapsed = time.perf_counter() - start
         self._track_timing("bulk_insert_tag_maps", elapsed)
