@@ -12,6 +12,9 @@ os.environ["JWT_SECRET"] = "test_jwt_secret_for_testing"
 os.environ["JWT_ALGORITHM"] = "HS256"
 os.environ["JWT_EXPIRE_MINUTES"] = "30"
 os.environ["DATABASE_URL"] = "sqlite:///test.db"
+# Prevent DailyTipsAgent from raising ValueError on import (no real API call is made in tests)
+os.environ.setdefault("NVIDIA_API_KEY", "test_dummy_key_for_tests")
+os.environ.setdefault("TAVILY_API_KEY", "test_dummy_tavily_key_for_tests")
 
 import uuid
 from datetime import datetime

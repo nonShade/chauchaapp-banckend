@@ -11,7 +11,7 @@ from app.modules.transactions.dto import (
     CategoryDistributionDTO,
     FinancialSummaryDTO,
     IncomeTypeResponseDTO,
-    IncomeVsExpensesDTO,
+    IncomeVsExpensesChartDTO,
     PaginationMetaDTO,
     TransactionCategoryResponseDTO,
     TransactionCreateDTO,
@@ -347,19 +347,27 @@ class TransactionsService:
         distribution.sort(key=lambda x: x.total_amount, reverse=True)
         return distribution
 
-    def get_income_vs_expenses(self, user_id: UUID) -> list[IncomeVsExpensesDTO]:
+    def get_income_vs_expenses(self, user_id: UUID) -> IncomeVsExpensesChartDTO:
         """Compare income vs expenses over the last 6 months, respecting frequencies.
 
-        Recurring transactions are projected into each month. For example, a
-        monthly salary of 850000 appears in every month from its start date
-        onward, providing a realistic forecast rather than only showing months
-        where the original transaction_date falls.
+        Recurring transactions are projected into each month. For the current
+        month the upper bound is capped at today (not end-of-month) so the
+        values are consistent with the financial summary card, which also uses
+        today as its default end_date.
         """
+        from datetime import timedelta
+
+        MONTH_LABELS = {
+            1: "Ene", 2: "Feb", 3: "Mar", 4: "Abr",
+            5: "May", 6: "Jun", 7: "Jul", 8: "Ago",
+            9: "Sep", 10: "Oct", 11: "Nov", 12: "Dic",
+        }
+
         transactions = self._repository.get_all_user_transactions_eager(user_id)
 
         today = date.today()
 
-        # Generate the last 6 calendar months
+        # Generate the last 6 calendar months (oldest → newest)
         months: list[tuple[int, int]] = []
         for i in range(5, -1, -1):
             m = today.month - i
@@ -372,14 +380,20 @@ class TransactionsService:
                 y += 1
             months.append((y, m))
 
-        comparison = []
+        labels: list[str] = []
+        income_series: list[Decimal] = []
+        expense_series: list[Decimal] = []
+
         for year, month_num in months:
-            # Calculate month bounds
             month_start = date(year, month_num, 1)
-            if month_num == 12:
+
+            # Cap the current month at today so the chart and summary always
+            # reflect the same "snapshot as of today".
+            if year == today.year and month_num == today.month:
+                month_end = today
+            elif month_num == 12:
                 month_end = date(year, 12, 31)
             else:
-                from datetime import timedelta
                 month_end = date(year, month_num + 1, 1) - timedelta(days=1)
 
             income = Decimal("0")
@@ -410,11 +424,12 @@ class TransactionsService:
                 elif type_name == "gasto":
                     expenses += amount
 
-            month_key = f"{year}-{month_num:02d}"
-            comparison.append(
-                IncomeVsExpensesDTO(
-                    month=month_key, income=income, expenses=expenses
-                )
-            )
+            labels.append(MONTH_LABELS[month_num])
+            income_series.append(income)
+            expense_series.append(expenses)
 
-        return comparison
+        return IncomeVsExpensesChartDTO(
+            labels=labels,
+            income=income_series,
+            expense=expense_series,
+        )

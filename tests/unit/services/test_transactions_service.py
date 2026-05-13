@@ -337,11 +337,19 @@ def test_get_income_vs_expenses(service, mock_repository):
     # Act
     result = service.get_income_vs_expenses(user_id)
 
-    # Assert — at least one month with data, check March
-    assert any(
-        r.month == "2026-03" and r.income == Decimal("100") and r.expenses == Decimal("50")
-        for r in result
-    )
+    # Assert — new format: parallel arrays with Spanish abbreviated month labels
+    assert hasattr(result, "labels")
+    assert hasattr(result, "income")
+    assert hasattr(result, "expense")
+    assert len(result.labels) == 6
+    assert len(result.income) == 6
+    assert len(result.expense) == 6
+
+    # March should be in the last 6 months; verify its values
+    assert "Mar" in result.labels
+    march_idx = result.labels.index("Mar")
+    assert result.income[march_idx] == Decimal("100")
+    assert result.expense[march_idx] == Decimal("50")
 
 
 def test_get_income_vs_expenses_with_monthly_recurring(service, mock_repository):
@@ -360,10 +368,9 @@ def test_get_income_vs_expenses_with_monthly_recurring(service, mock_repository)
     # Act
     result = service.get_income_vs_expenses(user_id)
 
-    # Assert — monthly income should appear in all months from Jan onward
-    # Find March in results (assuming March is within the last 6 months)
-    march_entry = next((r for r in result if r.month == "2026-03"), None)
-    assert march_entry is not None, "March should be in the results"
-    assert march_entry.income == Decimal("1000"), (
-        f"Expected 1000 income in March, got {march_entry.income}"
+    # Assert — new format: parallel arrays; monthly income should appear in March
+    assert "Mar" in result.labels, "March should be in the last 6 months"
+    march_idx = result.labels.index("Mar")
+    assert result.income[march_idx] == Decimal("1000"), (
+        f"Expected 1000 income in March, got {result.income[march_idx]}"
     )

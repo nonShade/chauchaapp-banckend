@@ -120,9 +120,15 @@ class CategoryDistributionDTO(BaseModel):
     percentage: float
 
 
-class IncomeVsExpensesDTO(BaseModel):
-    """Schema for monthly income vs expenses comparison."""
+class IncomeVsExpensesChartDTO(BaseModel):
+    """Schema for the monthly income vs expenses chart.
 
-    month: str
-    income: Decimal
-    expenses: Decimal
+    Returns parallel arrays ready for chart rendering:
+    - labels: abbreviated Spanish month names (e.g. "Ene", "Feb", ...)
+    - income: total income per month
+    - expense: total expenses per month
+    """
+
+    labels: list[str]
+    income: list[Decimal]
+    expense: list[Decimal]

@@ -12,7 +12,7 @@ from app.modules.transactions.dto import (
     CategoryDistributionDTO,
     FinancialSummaryDTO,
     IncomeTypeResponseDTO,
-    IncomeVsExpensesDTO,
+    IncomeVsExpensesChartDTO,
     TransactionCategoryResponseDTO,
     TransactionCreateDTO,
     TransactionFrequencyResponseDTO,
@@ -184,7 +184,7 @@ def get_expense_distribution(
 
 @router.get(
     "/analytics/income-vs-expenses",
-    response_model=list[IncomeVsExpensesDTO],
+    response_model=IncomeVsExpensesChartDTO,
     summary="Ingresos vs Gastos",
     description="Obtiene la comparativa mensual de ingresos y gastos de los últimos 6 meses.",
 )
