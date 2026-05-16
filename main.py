@@ -11,6 +11,7 @@ from app.modules.daily_tips.controller import router as daily_tips_router
 from app.modules.transactions.controller import router as transactions_router
 from app.modules.news.controller import router as news_router
 from app.modules.auth.controller import router as auth_router
+from app.modules.education.controller import router as education_router
 import os
 
 from dotenv import load_dotenv
@@ -52,6 +53,7 @@ app.include_router(transactions_router)
 app.include_router(news_router)
 app.include_router(daily_tips_router)
 app.include_router(users_router)
+app.include_router(education_router)
 
 
 # ---------------------------------------------------------------------------
